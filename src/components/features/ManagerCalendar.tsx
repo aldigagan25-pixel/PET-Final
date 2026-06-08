@@ -1,0 +1,431 @@
+"use client"
+
+import { useState, useMemo, useEffect } from "react"
+
+// ─────────────────────────────────────────────────────
+// Helper: format angka Indonesia (5000 → 5.000)
+// ─────────────────────────────────────────────────────
+export function fmtAngka(v: number, desimal = 0): string {
+  return v.toLocaleString("id-ID", {
+    minimumFractionDigits: desimal,
+    maximumFractionDigits: desimal,
+  })
+}
+
+export function fmtKgId(v: number): string {
+  const ton = v / 1000
+  const decimalPlaces = ton % 1 === 0 ? 0 : (ton % 0.1 === 0 ? 1 : 2)
+  return `${fmtAngka(ton, decimalPlaces)} ton`
+}
+
+// ─────────────────────────────────────────────────────
+// Hari Libur Nasional Indonesia 2024 – 2027
+// ─────────────────────────────────────────────────────
+const HARI_LIBUR: Record<string, string> = {
+  // ── 2024 ──
+  "2024-01-01": "Tahun Baru Masehi",
+  "2024-02-08": "Isra Mikraj",
+  "2024-02-10": "Tahun Baru Imlek",
+  "2024-03-11": "Hari Raya Nyepi",
+  "2024-03-29": "Wafat Isa Al-Masih",
+  "2024-04-10": "Hari Raya Idul Fitri",
+  "2024-04-11": "Hari Raya Idul Fitri 2",
+  "2024-05-01": "Hari Buruh",
+  "2024-05-09": "Kenaikan Isa Al-Masih",
+  "2024-05-23": "Hari Raya Waisak",
+  "2024-06-01": "Hari Lahir Pancasila",
+  "2024-06-17": "Hari Raya Idul Adha",
+  "2024-07-07": "Tahun Baru Islam 1446 H",
+  "2024-08-17": "HUT Kemerdekaan RI",
+  "2024-09-16": "Maulid Nabi Muhammad",
+  "2024-12-25": "Hari Raya Natal",
+  "2024-12-26": "Cuti Bersama Natal",
+
+  // ── 2025 ──
+  "2025-01-01": "Tahun Baru Masehi",
+  "2025-01-27": "Isra Mikraj",
+  "2025-01-28": "Tahun Baru Imlek",
+  "2025-01-29": "Cuti Bersama Imlek",
+  "2025-03-28": "Hari Raya Nyepi",
+  "2025-03-31": "Cuti Bersama Idul Fitri",
+  "2025-04-01": "Hari Raya Idul Fitri",
+  "2025-04-02": "Hari Raya Idul Fitri 2",
+  "2025-04-03": "Cuti Bersama Idul Fitri",
+  "2025-04-04": "Cuti Bersama Idul Fitri",
+  "2025-04-07": "Cuti Bersama Idul Fitri",
+  "2025-04-18": "Wafat Isa Al-Masih",
+  "2025-05-01": "Hari Buruh",
+  "2025-05-12": "Kenaikan Isa Al-Masih",
+  "2025-05-13": "Cuti Bersama Kenaikan",
+  "2025-05-29": "Hari Raya Waisak",
+  "2025-06-01": "Hari Lahir Pancasila",
+  "2025-06-06": "Hari Raya Idul Adha",
+  "2025-06-27": "Tahun Baru Islam 1447 H",
+  "2025-08-17": "HUT Kemerdekaan RI",
+  "2025-09-05": "Maulid Nabi Muhammad",
+  "2025-12-25": "Hari Raya Natal",
+  "2025-12-26": "Cuti Bersama Natal",
+
+  // ── 2026 ──
+  "2026-01-01": "Tahun Baru Masehi",
+  "2026-01-16": "Isra Mikraj",
+  "2026-02-17": "Tahun Baru Imlek",
+  "2026-03-19": "Tahun Baru Saka (Nyepi)",
+  "2026-03-20": "Wafat Isa Al-Masih",
+  "2026-03-21": "Hari Raya Idul Fitri",
+  "2026-03-22": "Hari Raya Idul Fitri 2",
+  "2026-04-03": "Cuti Bersama Idul Fitri",
+  "2026-05-01": "Hari Buruh",
+  "2026-05-14": "Kenaikan Isa Al-Masih",
+  "2026-05-16": "Hari Raya Waisak",
+  "2026-05-26": "Hari Raya Idul Adha",
+  "2026-06-01": "Hari Lahir Pancasila",
+  "2026-06-16": "Tahun Baru Islam 1448 H",
+  "2026-08-17": "HUT Kemerdekaan RI",
+  "2026-08-25": "Maulid Nabi Muhammad",
+  "2026-12-25": "Hari Raya Natal",
+
+  // ── 2027 ──
+  "2027-01-01": "Tahun Baru Masehi",
+  "2027-01-06": "Isra Mikraj",
+  "2027-02-06": "Tahun Baru Imlek",
+  "2027-03-09": "Hari Raya Nyepi",
+  "2027-03-10": "Wafat Isa Al-Masih",
+  "2027-03-11": "Hari Raya Idul Fitri",
+  "2027-03-12": "Hari Raya Idul Fitri 2",
+  "2027-05-01": "Hari Buruh",
+  "2027-05-04": "Kenaikan Isa Al-Masih",
+  "2027-05-06": "Hari Raya Waisak",
+  "2027-05-16": "Hari Raya Idul Adha",
+  "2027-06-01": "Hari Lahir Pancasila",
+  "2027-06-06": "Tahun Baru Islam 1449 H",
+  "2027-08-17": "HUT Kemerdekaan RI",
+  "2027-08-15": "Maulid Nabi Muhammad",
+  "2027-12-25": "Hari Raya Natal",
+}
+
+// ─────────────────────────────────────────────────────
+// Interfaces
+// ─────────────────────────────────────────────────────
+interface DayActivity {
+  date: string
+  totalKg: number
+  totalTransaksi: number
+  warehouses: { nama: string; kg: number }[]
+}
+
+interface Props {
+  calendarData: DayActivity[]
+  targetHarian: number
+  selectedBulan?: number
+  selectedTahun?: number
+}
+
+const MONTHS_ID = [
+  "Januari","Februari","Maret","April","Mei","Juni",
+  "Juli","Agustus","September","Oktober","November","Desember",
+]
+const DAYS_ID = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"]
+
+// ─────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────
+export default function ManagerCalendar({ calendarData, targetHarian, selectedBulan, selectedTahun }: Props) {
+  const today = new Date()
+  const [viewYear, setViewYear]   = useState(selectedTahun ?? today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(selectedBulan ? (selectedBulan - 1) : today.getMonth())
+  const [selectedDay, setSelectedDay] = useState<DayActivity | null>(null)
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (selectedTahun !== undefined) setViewYear(selectedTahun)
+    if (selectedBulan !== undefined) setViewMonth(selectedBulan - 1)
+  }, [selectedBulan, selectedTahun])
+
+  const dataMap = useMemo(() => {
+    const m: Record<string, DayActivity> = {}
+    for (const d of calendarData) m[d.date] = d
+    return m
+  }, [calendarData])
+
+  const maxKgMonth = useMemo(() => {
+    let max = 0
+    const first = new Date(viewYear, viewMonth, 1)
+    const last  = new Date(viewYear, viewMonth + 1, 0)
+    for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10)
+      if (dataMap[key]) max = Math.max(max, dataMap[key].totalKg)
+    }
+    return max
+  }, [dataMap, viewYear, viewMonth])
+
+  const calendarGrid = useMemo(() => {
+    const firstDay    = new Date(viewYear, viewMonth, 1).getDay()
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+    const cells: (number | null)[] = Array(firstDay).fill(null)
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+    while (cells.length % 7 !== 0) cells.push(null)
+    return cells
+  }, [viewYear, viewMonth])
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+    else setViewMonth(m => m - 1)
+    setSelectedDay(null)
+  }
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+    else setViewMonth(m => m + 1)
+    setSelectedDay(null)
+  }
+
+  const todayKey = new Date(today.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+  // Warna hijau untuk aktivitas
+  const getActivityColor = (kg: number): string => {
+    if (kg === 0 || maxKgMonth === 0) return ""
+    const r = kg / maxKgMonth
+    if (r >= 0.85) return "bg-emerald-500 text-white"
+    if (r >= 0.65) return "bg-emerald-400 text-white"
+    if (r >= 0.45) return "bg-emerald-300 text-slate-800"
+    if (r >= 0.25) return "bg-emerald-200 text-slate-700"
+    return "bg-emerald-100 text-slate-600"
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* ── Header ── */}
+      <div className="p-6 border-b border-slate-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Kalender Aktivitas</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Hijau = volume pembelian · <span className="text-red-400 font-medium">Merah = libur nasional</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors text-lg font-bold"
+            >‹</button>
+            <span className="text-sm font-bold text-slate-700 min-w-[140px] text-center">
+              {MONTHS_ID[viewMonth]} {viewYear}
+            </span>
+            <button
+              onClick={nextMonth}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors text-lg font-bold"
+            >›</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5">
+        {/* ── Day Headers ── */}
+        <div className="grid grid-cols-7 mb-2">
+          {DAYS_ID.map((d, i) => (
+            <div
+              key={d}
+              className={`text-center text-[11px] font-bold py-1 ${
+                i === 0 ? "text-red-400" : "text-slate-400"
+              }`}
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* ── Calendar Cells ── */}
+        <div className="grid grid-cols-7 gap-1">
+          {calendarGrid.map((day, idx) => {
+            if (!day) return <div key={idx} />
+
+            // Compute column = day of week: idx % 7
+            // But we need the actual day of week for this date
+            const colIdx   = idx % 7  // 0=Sun, 6=Sat
+            const key      = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+            const activity = dataMap[key]
+            const kg       = activity?.totalKg || 0
+            const isToday  = key === todayKey
+            const isSunday = colIdx === 0
+            const holiday  = HARI_LIBUR[key]
+            const isRed    = isSunday || !!holiday
+            const isSelected = selectedDay?.date === key
+            const isHovered  = hoveredKey === key
+
+            // Activity color takes priority visually if there's data
+            const actColor = getActivityColor(kg)
+
+            // Base background/text class
+            let cellBg: string
+            let numColor: string
+            if (actColor) {
+              cellBg   = actColor
+              numColor = ""
+            } else if (isRed) {
+              cellBg   = "bg-red-50 hover:bg-red-100"
+              numColor = "text-red-500"
+            } else {
+              cellBg   = "hover:bg-slate-50"
+              numColor = "text-slate-600"
+            }
+
+            // Today ring
+            const todayRing = isToday ? "ring-2 ring-cyan-500 ring-offset-1" : ""
+            const selRing   = isSelected ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+            const cursor    = (kg > 0 || holiday) ? "cursor-pointer" : "cursor-default"
+            const shadow    = (kg > 0 || holiday) ? "hover:shadow-md" : ""
+
+            return (
+              <div key={key} className="relative group">
+                <button
+                  onClick={() => {
+                    if (activity) setSelectedDay(isSelected ? null : activity)
+                    else if (holiday) {
+                      // Show holiday info by simulating selection
+                      setSelectedDay(
+                        isSelected
+                          ? null
+                          : { date: key, totalKg: 0, totalTransaksi: 0, warehouses: [] }
+                      )
+                    }
+                  }}
+                  onMouseEnter={() => setHoveredKey(key)}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  className={`
+                    w-full aspect-square rounded-lg flex flex-col items-center justify-center
+                    text-xs font-medium transition-all duration-150
+                    ${cellBg} ${todayRing} ${selRing} ${cursor} ${shadow}
+                  `}
+                >
+                  {/* Day number — red override for holidays/sunday when no activity */}
+                  <span
+                    className={`text-xs font-extrabold leading-none ${
+                      actColor
+                        ? ""
+                        : isRed
+                        ? "text-red-500"
+                        : isToday
+                        ? "text-cyan-600"
+                        : numColor
+                    }`}
+                  >
+                    {day}
+                  </span>
+
+                  {/* Volume mini label */}
+                  {kg > 0 && (
+                    <span className="text-[8px] leading-tight mt-0.5 opacity-85 font-semibold">
+                      {fmtKgId(kg)}
+                    </span>
+                  )}
+
+                  {/* Holiday dot indicator */}
+                  {holiday && kg === 0 && (
+                    <span className="mt-0.5 w-1 h-1 rounded-full bg-red-400 block" />
+                  )}
+                </button>
+
+                {/* Tooltip on hover for holiday name */}
+                {holiday && isHovered && !isSelected && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+                    <div className="bg-red-600 text-white text-[10px] font-semibold px-2 py-1 rounded-lg shadow-lg whitespace-nowrap max-w-[140px] text-center leading-tight">
+                      🎌 {holiday}
+                    </div>
+                    <div className="w-2 h-2 bg-red-600 rotate-45 mx-auto -mt-1" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ── Legend ── */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-100 text-[11px] text-slate-500">
+          <div className="flex items-center gap-1.5">
+            {["bg-emerald-100","bg-emerald-200","bg-emerald-300","bg-emerald-400","bg-emerald-500"].map((c, i) => (
+              <div key={i} className={`w-4 h-3 rounded ${c}`} />
+            ))}
+            <span>Volume pembelian</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded bg-red-50 border border-red-200 flex items-center justify-center">
+              <span className="text-red-500 font-bold text-[10px]">1</span>
+            </div>
+            <span>Hari Minggu</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded bg-red-50 border border-red-200 flex items-center justify-center">
+              <span className="text-red-500 font-bold text-[10px] leading-none">•</span>
+            </div>
+            <span>Libur Nasional</span>
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <div className="w-4 h-4 rounded border-2 border-cyan-500" />
+            <span>Hari ini</span>
+          </div>
+        </div>
+
+        {/* ── Detail Popup ── */}
+        {selectedDay && (
+          <div className="mt-4 bg-gradient-to-br from-slate-50 to-indigo-50 border border-indigo-100 rounded-xl p-4">
+            <div className="flex items-start justify-between mb-3 gap-2">
+              <div>
+                <p className="text-sm font-bold text-slate-800">
+                  {new Date(selectedDay.date + "T00:00:00").toLocaleDateString("id-ID", {
+                    weekday: "long", day: "numeric", month: "long", year: "numeric"
+                  })}
+                </p>
+                {HARI_LIBUR[selectedDay.date] && (
+                  <p className="text-xs font-semibold text-red-500 mt-0.5">
+                    🎌 {HARI_LIBUR[selectedDay.date]}
+                  </p>
+                )}
+                {selectedDay.totalTransaksi > 0 && (
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {fmtAngka(selectedDay.totalTransaksi)} transaksi
+                  </p>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                {selectedDay.totalKg > 0 ? (
+                  <>
+                    <p className="text-xl font-extrabold text-emerald-600">{fmtKgId(selectedDay.totalKg)}</p>
+                    {targetHarian > 0 && (
+                      <p className="text-[11px] text-slate-400">
+                        {fmtAngka((selectedDay.totalKg / targetHarian) * 100, 1)}% dari target harian
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-slate-400 italic">Tidak ada transaksi</p>
+                )}
+              </div>
+            </div>
+
+            {/* Per-warehouse breakdown */}
+            {selectedDay.warehouses.length > 0 && (
+              <div className="space-y-2 mt-2">
+                {selectedDay.warehouses.map(w => (
+                  <div key={w.nama} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 w-24 shrink-0">Gudang {w.nama}</span>
+                    <div className="flex-1 bg-white rounded-full h-2 overflow-hidden shadow-inner">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-indigo-500 rounded-full transition-all"
+                        style={{
+                          width: `${selectedDay.totalKg > 0 ? (w.kg / selectedDay.totalKg) * 100 : 0}%`
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 w-24 text-right shrink-0">
+                      {fmtKgId(w.kg)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  nama        String
+  email       String       @unique
+  password    String
+  role        String       // 'MANAGER', 'ADMIN', 'STAFF'
+  warehouseId String?
+  warehouse   Warehouse?   @relation(fields: [warehouseId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  staffPurchases   Purchase[] @relation("StaffPurchase")
+  adminPurchases   Purchase[] @relation("AdminPurchase")
+  managerApprovals Purchase[] @relation("ManagerApproval")
+  approvedDps      DownPayment[] @relation("ManagerDpApproval")
+  auditLogs        AuditLog[]
+  warehouseTargets WarehouseTarget[] @relation("TargetSetter")
+}
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  nama      String
+  lokasi    String
+  users            User[]
+  purchases        Purchase[]
+  skuPrices        SkuPriceStandard[]
+  suppliers        Supplier[]
+  targets          WarehouseTarget[]
+}
+
+model Supplier {
+  id                String   @id @default(uuid())
+  nama              String
+  kontak_wa         String?
+  link              String?
+  nama_bank         String?
+  nomor_rekening    String?
+  atas_nama         String?
+  target_bulanan_kg Float    @default(0)
+  frekuensi_ambilan_mingguan Int @default(1)
+  hari_ambilan      String?
+  warehouseId       String?
+  warehouse         Warehouse? @relation(fields: [warehouseId], references: [id])
+  purchases         Purchase[]
+  downPayments      DownPayment[]
+}
+
+model SkuPriceStandard {
+  id               String    @id @default(uuid())
+  sku_name         String
+  warehouseId      String
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id])
+  max_price_per_kg Float
+}
+
+model Purchase {
+  id                         String    @id @default(uuid())
+  nomor_nota                 String?   @unique
+  tanggal                    DateTime  @default(now())
+  warehouseId                String
+  warehouse                  Warehouse @relation(fields: [warehouseId], references: [id])
+  supplierId                 String
+  supplier                   Supplier  @relation(fields: [supplierId], references: [id])
+  
+  userIdStaff                String
+  staff                      User      @relation("StaffPurchase", fields: [userIdStaff], references: [id])
+  userIdAdmin                String?
+  admin                      User?     @relation("AdminPurchase", fields: [userIdAdmin], references: [id])
+  approvedByUserId           String?
+  manager                    User?     @relation("ManagerApproval", fields: [approvedByUserId], references: [id])
+  
+  approvedAt                 DateTime?
+  metode_pembayaran_terpilih String?   // 'TIMBANGAN_GUDANG' | 'TIMBANGAN_LAPAK'
+  
+  berat_timbangan_lapak      Float?
+  berat_timbangan_gudang     Float?
+  berat_final                Float?
+  
+  total_nilai_sebelum_retur  Float?
+  total_potongan_retur       Float?
+  total_nilai_setelah_retur  Float?
+  potongan_sampah            Float?    @default(0)
+  berat_potongan_sampah      Float?    @default(0)
+  harga_potongan_sampah      Float?    @default(0)
+  potongan_susut             Float?    @default(0)
+  berat_potongan_susut       Float?    @default(0)
+  harga_potongan_susut       Float?    @default(0)
+  potongan_air               Float?    @default(0)
+  berat_potongan_air         Float?    @default(0)
+  harga_potongan_air         Float?    @default(0)
+  potongan_karung            Float?    @default(0)
+  berat_potongan_karung      Float?    @default(0)
+  harga_potongan_karung      Float?    @default(0)
+  dp_yang_digunakan          Float?
+  total_dibayar              Float?
+  persentase_pembayaran      Float?    @default(100)
+  nominal_pembayaran_awal    Float?    @default(0)
+  nominal_belum_lunas        Float?    @default(0)
+  status_pelunasan           String?   @default("LUNAS") // "BELUM_LUNAS" | "LUNAS"
+  
+  status_approval            String    // 'menunggu_double_cek', 'menunggu_approval_harga', 'approved', 'sudah_transfer', 'rejected', 'dibatalkan'
+  rejection_reason           String?
+  bukti_transfer             String?
+  tanggal_transfer           DateTime?
+  
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  items                      PurchaseItem[]
+  returs                     ReturItem[]
+}
+
+model PurchaseItem {
+  id               String   @id @default(uuid())
+  purchaseId       String
+  purchase         Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  sku_name         String
+  spec             String?  // 'Grading' | 'Gabyuk'
+  berat_lapak      Float?   // Timbangan lapak staff per SKU
+  berat_final_item Float    // Timbangan gudang admin per SKU
+  harga_per_kg     Float
+  subtotal         Float
+}
+
+model ReturItem {
+  id             String   @id @default(uuid())
+  purchaseId     String
+  purchase       Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  sku_name       String
+  berat_retur    Float
+  potongan_nilai Float
+  alasan         String?
+}
+
+model DownPayment {
+  id                 String    @id @default(uuid())
+  supplierId         String
+  supplier           Supplier  @relation(fields: [supplierId], references: [id])
+  nominal_diajukan   Float
+  nominal_disetujui  Float?
+  dp_used_amount     Float     @default(0)
+  status_approval    String    // 'menunggu_approval_admin', 'menunggu_approval_manager', 'approved', 'rejected'
+  approvedByUserId   String?
+  approvedBy         User?     @relation("ManagerDpApproval", fields: [approvedByUserId], references: [id])
+  sisa_dp            Float?
+  tanggal_permintaan DateTime  @default(now())
+  tanggal_approval   DateTime?
+  expired_at         DateTime?
+  keterangan         String?
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  table_name String
+  record_id  String
+  old_data   String?  // JSON string
+  new_data   String?  // JSON string
+  createdAt  DateTime @default(now())
+}
+
+model WarehouseTarget {
+  id                String    @id @default(uuid())
+  warehouseId       String
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bulan             Int       @default(6)
+  tahun             Int       @default(2026)
+
+  // Target lama (gabungan) - dipertahankan untuk kompatibilitas
+  target_harian_kg   Float     @default(0)
+  target_mingguan_kg Float     @default(0)
+  target_bulanan_kg  Float     @default(0)
+
+  // Target PET Final (pembelian bahan baku PET)
+  target_harian_pet_final   Float     @default(0)
+  target_mingguan_pet_final Float     @default(0)
+  target_bulanan_pet_final  Float     @default(0)
+
+  // Target Trading Bale Press (penjualan bale hasil press)
+  target_harian_bale_press   Float     @default(0)
+  target_mingguan_bale_press Float     @default(0)
+  target_bulanan_bale_press  Float     @default(0)
+
+  updatedByUserId   String?
+  updatedBy         User?     @relation("TargetSetter", fields: [updatedByUserId], references: [id])
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([warehouseId, bulan, tahun])
+}
