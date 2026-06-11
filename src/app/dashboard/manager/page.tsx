@@ -286,6 +286,7 @@ export default async function ManagerDashboard({
     totalSusut: number   // akumulasi selisih negatif (gudang < lapak)
     totalLebih: number   // akumulasi selisih positif (gudang > lapak)
     transaksi: number
+    detailTransaksi: any[]
   }> = {}
 
   for (const p of monthlyPurchases) {
@@ -306,6 +307,7 @@ export default async function ManagerDashboard({
         totalSusut: 0,
         totalLebih: 0,
         transaksi: 0,
+        detailTransaksi: []
       }
     }
     const entry = susutLebihMap[sid]
@@ -315,6 +317,27 @@ export default async function ManagerDashboard({
     if (selisih < 0) entry.totalSusut += Math.abs(selisih)
     else if (selisih > 0) entry.totalLebih += selisih
     entry.transaksi += 1
+
+    const skus = p.items.map(item => {
+      const itemLapak = item.berat_lapak ?? item.berat_final_item ?? 0
+      const itemGudang = item.berat_final_item ?? 0
+      return {
+        skuName: item.sku_name,
+        beratLapak: itemLapak,
+        beratGudang: itemGudang,
+        selisih: itemGudang - itemLapak
+      }
+    })
+
+    entry.detailTransaksi.push({
+      purchaseId: p.id,
+      nomorNota: p.nomor_nota || null,
+      tanggal: p.createdAt.toISOString(),
+      beratLapak: lapak,
+      beratGudang: gudang,
+      selisih: selisih,
+      skus
+    })
   }
 
   const lapakSusutData = Object.entries(susutLebihMap).map(([supplierId, v]) => ({
@@ -328,6 +351,7 @@ export default async function ManagerDashboard({
     totalSusut: v.totalSusut,
     totalLebih: v.totalLebih,
     transaksi: v.transaksi,
+    detailTransaksi: v.detailTransaksi,
     pctSusut: v.totalLapak > 0 ? (v.totalSusut / v.totalLapak) * 100 : 0,
     pctLebih: v.totalLapak > 0 ? (v.totalLebih / v.totalLapak) * 100 : 0,
   })).sort((a, b) => b.totalSusut - a.totalSusut)

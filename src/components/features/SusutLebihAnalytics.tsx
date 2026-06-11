@@ -3,6 +3,23 @@
 import { useState } from "react"
 import { fmtKg, fmtAngka, fmtPct } from "@/lib/format"
 
+interface SkuSusutDetail {
+  skuName: string
+  beratLapak: number
+  beratGudang: number
+  selisih: number
+}
+
+interface TransaksiSusutDetail {
+  purchaseId: string
+  nomorNota: string | null
+  tanggal: string
+  beratLapak: number
+  beratGudang: number
+  selisih: number
+  skus: SkuSusutDetail[]
+}
+
 interface LapakSusutData {
   supplierId: string
   namaLapak: string
@@ -16,6 +33,7 @@ interface LapakSusutData {
   transaksi: number
   pctSusut: number         // % susut dari lapak
   pctLebih: number         // % lebih dari lapak
+  detailTransaksi: TransaksiSusutDetail[]
 }
 
 interface SusutLebihSummary {
@@ -39,6 +57,7 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"susut" | "lebih" | "volume">("susut")
   const [showMode, setShowMode] = useState<"semua" | "susut" | "lebih">("semua")
+  const [selectedLapak, setSelectedLapak] = useState<LapakSusutData | null>(null)
 
   const filtered = lapakData.filter(d =>
     (selectedWarehouseId === "all" || d.warehouseId === selectedWarehouseId) &&
@@ -193,6 +212,9 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
                   <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap border-l border-slate-600">
                     Transaksi
                   </th>
+                  <th className="text-center px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap border-l border-slate-600">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -263,6 +285,14 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
                       <td className="px-4 py-3 text-right text-slate-500 border-l border-slate-100 whitespace-nowrap text-xs">
                         {fmtAngka(row.transaksi)}x
                       </td>
+                      <td className="px-4 py-3 text-center border-l border-slate-100 whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedLapak(row)}
+                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold px-3 py-1.5 rounded-xl text-xs transition-all border border-indigo-100 shadow-sm"
+                        >
+                          🔍 Cek Detail
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -296,12 +326,117 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
                   <td className="px-4 py-3 text-right border-l border-slate-600 text-xs">
                     {fmtAngka(sorted.reduce((s, d) => s + d.transaksi, 0))}x
                   </td>
+                  <td className="border-l border-slate-600 px-4 py-3 text-xs" />
                 </tr>
               </tfoot>
             </table>
           </div>
         )}
       </div>
+
+      {/* Modal Detail Susut per Lapak */}
+      {selectedLapak && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[85vh] shadow-2xl flex flex-col overflow-hidden animate-in scale-in duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Detail Susut &amp; Lebih: {selectedLapak.namaLapak}</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Collection Center: <span className="font-semibold text-slate-700">{selectedLapak.warehouseName}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedLapak(null)}
+                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-200/50 rounded-xl transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto space-y-6 max-h-[60vh] scrollbar-thin scrollbar-thumb-slate-200">
+              {selectedLapak.detailTransaksi && selectedLapak.detailTransaksi.length > 0 ? (
+                selectedLapak.detailTransaksi.map((tx) => {
+                  const hasShrinkage = tx.selisih < 0
+                  return (
+                    <div key={tx.purchaseId} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
+                      {/* Tx Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <span className="font-mono font-bold text-slate-700 text-sm">
+                            {tx.nomorNota || `#${tx.purchaseId.split("-")[0]}`}
+                          </span>
+                          <span className="text-[10px] text-slate-450 ml-2 font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                            {new Date(tx.tanggal).toLocaleDateString("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" })}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="text-xs font-mono font-medium px-2 py-0.5 bg-slate-100 rounded text-slate-600 flex items-center">
+                            Lapak: {tx.beratLapak.toFixed(1)} kg · Gudang: {tx.beratGudang.toFixed(1)} kg
+                          </span>
+                          <span className={`text-xs font-mono font-extrabold px-2.5 py-1 rounded-lg border ${tx.selisih < 0 ? "bg-rose-50 text-rose-600 border-rose-100" : tx.selisih > 0 ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-slate-100 text-slate-650"}`}>
+                            {tx.selisih === 0 ? "Sesuai" : tx.selisih < 0 ? `Susut: ${tx.selisih.toFixed(1)} kg` : `Lebih: +${tx.selisih.toFixed(1)} kg`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Sku Breakdown */}
+                      <div className="overflow-x-auto rounded-xl border border-slate-100">
+                        <table className="w-full text-left text-xs text-slate-600">
+                          <thead>
+                            <tr className="bg-slate-100 font-semibold text-slate-500">
+                              <th className="px-4 py-2">Nama SKU</th>
+                              <th className="px-4 py-2 text-right">Timbang Lapak</th>
+                              <th className="px-4 py-2 text-right">Timbang Gudang</th>
+                              <th className="px-4 py-2 text-right">Selisih</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {tx.skus.map((sku, sIdx) => {
+                              const sDiff = sku.selisih
+                              return (
+                                <tr key={sIdx} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-4 py-2.5 font-bold text-slate-700">{sku.skuName}</td>
+                                  <td className="px-4 py-2.5 text-right font-mono">{sku.beratLapak.toFixed(1)} kg</td>
+                                  <td className="px-4 py-2.5 text-right font-mono font-bold text-slate-800">{sku.beratGudang.toFixed(1)} kg</td>
+                                  <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">
+                                    {sDiff === 0 ? (
+                                      <span className="text-emerald-600 font-bold">✓ 0 kg</span>
+                                    ) : (
+                                      <span className={`font-bold ${sDiff < 0 ? "text-rose-600" : "text-cyan-600"}`}>
+                                        {sDiff < 0 ? `${sDiff.toFixed(1)} kg` : `+${sDiff.toFixed(1)} kg`}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-center text-slate-400 text-sm py-8">Tidak ada data transaksi pengiriman lapak ini.</p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setSelectedLapak(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-slate-900/10"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
