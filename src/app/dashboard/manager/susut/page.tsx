@@ -1,0 +1,166 @@
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/authOptions"
+import { prisma } from "@/lib/prisma"
+import { redirect } from "next/navigation"
+import SusutLebihAnalytics from "@/components/features/SusutLebihAnalytics"
+import MonthYearFilter from "@/components/features/MonthYearFilter"
+import Link from "next/link"
+
+export default async function ManagerSusutPage({
+  searchParams
+}: {
+  searchParams: Promise<{ bulan?: string; tahun?: string }>
+}) {
+  const { bulan: qBulan, tahun: qTahun } = await searchParams
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as any).role !== "MANAGER") {
+    redirect("/login")
+  }
+
+  // Date setup
+  const nowUtc = new Date()
+  const now = new Date(nowUtc.getTime() + 7 * 60 * 60 * 1000)
+  const selectedBulan = qBulan ? parseInt(qBulan) : now.getUTCMonth() + 1
+  const selectedTahun = qTahun ? parseInt(qTahun) : now.getUTCFullYear()
+
+  const monthStart = new Date(Date.UTC(selectedTahun, selectedBulan - 1, 1, 0, 0, 0) - 7 * 60 * 60 * 1000)
+  const monthEnd   = new Date(Date.UTC(selectedTahun, selectedBulan, 1, 0, 0, 0) - 7 * 60 * 60 * 1000)
+
+  // Fetch data
+  const warehouses = await prisma.warehouse.findMany({ orderBy: { nama: "asc" } })
+  const validPurchases = await prisma.purchase.findMany({
+    where: {
+      status_approval: { in: ["menunggu_double_cek", "menunggu_approval_harga", "approved", "sudah_transfer"] },
+      createdAt: { gte: monthStart, lt: monthEnd }
+    },
+    include: {
+      items: true,
+      supplier: true,
+      warehouse: true
+    }
+  })
+
+  // Compute lapakSusutData
+  const susutLebihMap: Record<string, {
+    nama: string
+    warehouseId: string
+    warehouseName: string
+    totalLapak: number
+    totalGudang: number
+    totalSusut: number
+    totalLebih: number
+    transaksi: number
+    detailTransaksi: any[]
+  }> = {}
+
+  for (const p of validPurchases) {
+    const lapak = p.berat_timbangan_lapak
+    const gudang = p.berat_timbangan_gudang
+    if (!lapak || !gudang) continue
+
+    const sid = p.supplierId
+    const wh = warehouses.find(w => w.id === p.warehouseId)
+    if (!susutLebihMap[sid]) {
+      susutLebihMap[sid] = {
+        nama: p.supplier?.nama || "Unknown",
+        warehouseId: p.warehouseId,
+        warehouseName: wh?.nama || "—",
+        totalLapak: 0,
+        totalGudang: 0,
+        totalSusut: 0,
+        totalLebih: 0,
+        transaksi: 0,
+        detailTransaksi: []
+      }
+    }
+    const entry = susutLebihMap[sid]
+    const selisih = gudang - lapak
+    entry.totalLapak += lapak
+    entry.totalGudang += gudang
+    if (selisih < 0) entry.totalSusut += Math.abs(selisih)
+    else if (selisih > 0) entry.totalLebih += selisih
+    entry.transaksi += 1
+
+    const skus = p.items.map(item => {
+      const itemLapak = item.berat_lapak ?? item.berat_final_item ?? 0
+      const itemGudang = item.berat_final_item ?? 0
+      return {
+        skuName: item.sku_name,
+        beratLapak: itemLapak,
+        beratGudang: itemGudang,
+        selisih: itemGudang - itemLapak
+      }
+    })
+
+    entry.detailTransaksi.push({
+      purchaseId: p.id,
+      nomorNota: p.nomor_nota || null,
+      tanggal: p.createdAt.toISOString(),
+      beratLapak: lapak,
+      beratGudang: gudang,
+      selisih: selisih,
+      skus
+    })
+  }
+
+  const lapakSusutData = Object.entries(susutLebihMap).map(([supplierId, v]) => ({
+    supplierId,
+    namaLapak: v.nama,
+    warehouseId: v.warehouseId,
+    warehouseName: v.warehouseName,
+    totalLapak: v.totalLapak,
+    totalGudang: v.totalGudang,
+    selisih: v.totalGudang - v.totalLapak,
+    totalSusut: v.totalSusut,
+    totalLebih: v.totalLebih,
+    transaksi: v.transaksi,
+    detailTransaksi: v.detailTransaksi,
+    pctSusut: v.totalLapak > 0 ? (v.totalSusut / v.totalLapak) * 100 : 0,
+    pctLebih: v.totalLapak > 0 ? (v.totalLebih / v.totalLapak) * 100 : 0,
+  })).sort((a, b) => b.totalSusut - a.totalSusut)
+
+  const susutSummaryTotalLapak = lapakSusutData.reduce((s, d) => s + d.totalLapak, 0)
+  const susutSummaryTotalGudang = lapakSusutData.reduce((s, d) => s + d.totalGudang, 0)
+  const susutSummaryTotalSusut = lapakSusutData.reduce((s, d) => s + d.totalSusut, 0)
+  const susutSummaryTotalLebih = lapakSusutData.reduce((s, d) => s + d.totalLebih, 0)
+
+  const susutLebihSummary = {
+    totalLapakAll: susutSummaryTotalLapak,
+    totalGudangAll: susutSummaryTotalGudang,
+    totalSusutAll: susutSummaryTotalSusut,
+    totalLebihAll: susutSummaryTotalLebih,
+    totalSelisihBersih: susutSummaryTotalGudang - susutSummaryTotalLapak,
+    pctSusutAll: susutSummaryTotalLapak > 0 ? (susutSummaryTotalSusut / susutSummaryTotalLapak) * 100 : 0,
+    pctLebihAll: susutSummaryTotalLapak > 0 ? (susutSummaryTotalLebih / susutSummaryTotalLapak) * 100 : 0,
+    transaksiDenganData: lapakSusutData.reduce((s, d) => s + d.transaksi, 0),
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <h2 className="text-2xl font-bold text-slate-800">Analisis Penyusutan Timbangan</h2>
+            <MonthYearFilter selectedBulan={selectedBulan} selectedTahun={selectedTahun} />
+          </div>
+          <p className="text-slate-500 text-sm mt-1">
+            Pantau dan analisis detail susut &amp; lebih timbangan per lapak dan per SKU.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/manager"
+          className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all"
+        >
+          ← Dashboard
+        </Link>
+      </div>
+
+      <SusutLebihAnalytics
+        lapakData={lapakSusutData}
+        summary={susutLebihSummary}
+        warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
+      />
+    </div>
+  )
+}

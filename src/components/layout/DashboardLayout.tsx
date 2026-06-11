@@ -49,6 +49,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ] : []),
     ...(role === "MANAGER" ? [
       { name: "Analytics", href: "/dashboard/manager", icon: "📊" },
+      { name: "Analisis Susut", href: "/dashboard/manager/susut", icon: "⚖️" },
+      { name: "Rekap DP", href: "/dashboard/manager/dp", icon: "💸" },
       { name: "Approval Harga", href: "/dashboard/manager/approval-harga", icon: "✏️" },
       { name: "Approval DP", href: "/dashboard/manager/approval-dp", icon: "💰" },
       { name: "Master Data", href: "/dashboard/manager/master-data", icon: "🗂️" },
