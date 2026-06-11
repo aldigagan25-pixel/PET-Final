@@ -20,10 +20,15 @@ interface ExpenseAnalyticsProps {
 export default function ExpenseAnalytics({ globalExpenses, warehouseExpenses }: ExpenseAnalyticsProps) {
   const formatRp = (n: number) => n.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
 
+  const excludedKeywords = ["kediri", "malang", "madiun"]
+  const filteredExpenses = warehouseExpenses.filter(w => 
+    !excludedKeywords.some(keyword => w.nama.toLowerCase().includes(keyword))
+  )
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {warehouseExpenses.map((w) => (
+        {filteredExpenses.map((w) => (
           <div key={w.id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
               <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
