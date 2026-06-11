@@ -87,6 +87,7 @@ export default function ManagerSuppliersClient({
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all")
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<"all" | "A" | "B" | "C" | "active">("all")
   
   // Month & Year state for performance tracking
   const currentMonth = new Date().getMonth() + 1
@@ -283,8 +284,8 @@ export default function ManagerSuppliersClient({
     }
   })
 
-  // Filter based on warehouse and search query
-  const filteredSuppliers = suppliersWithPerformance.filter(s => {
+  // Filter based on warehouse and search query (base list without grade filter)
+  const baseFilteredSuppliers = suppliersWithPerformance.filter(s => {
     const matchesWarehouse = selectedWarehouseId === "all" || s.warehouseId === selectedWarehouseId
     
     const query = searchQuery.toLowerCase()
@@ -299,13 +300,28 @@ export default function ManagerSuppliersClient({
     return matchesWarehouse && matchesSearch
   })
 
-  // Global Performance metrics for filtered results
-  const totalLapakCount = filteredSuppliers.length
-  const activeLapakCount = filteredSuppliers.filter(s => s.performance.totalTransactions > 0).length
-  const gradeACount = filteredSuppliers.filter(s => s.performance.grade === "A").length
-  const gradeBCount = filteredSuppliers.filter(s => s.performance.grade === "B").length
-  const gradeCCount = filteredSuppliers.filter(s => s.performance.grade === "C").length
-  const totalWeightFiltered = filteredSuppliers.reduce((sum, s) => sum + s.performance.totalGudangWeight, 0)
+  // Global Performance metrics for base list (updates dynamically on warehouse/date search)
+  const totalLapakCount = baseFilteredSuppliers.length
+  const activeLapakCount = baseFilteredSuppliers.filter(s => s.performance.totalTransactions > 0).length
+  const gradeACount = baseFilteredSuppliers.filter(s => s.performance.grade === "A").length
+  const gradeBCount = baseFilteredSuppliers.filter(s => s.performance.grade === "B").length
+  const gradeCCount = baseFilteredSuppliers.filter(s => s.performance.grade === "C").length
+  const totalWeightFiltered = baseFilteredSuppliers.reduce((sum, s) => sum + s.performance.totalGudangWeight, 0)
+
+  // Apply grade/status quick filter
+  const filteredSuppliers = baseFilteredSuppliers.filter(s => {
+    let matchesGrade = true
+    if (selectedGradeFilter === "A") {
+      matchesGrade = s.performance.grade === "A"
+    } else if (selectedGradeFilter === "B") {
+      matchesGrade = s.performance.grade === "B"
+    } else if (selectedGradeFilter === "C") {
+      matchesGrade = s.performance.grade === "C"
+    } else if (selectedGradeFilter === "active") {
+      matchesGrade = s.performance.totalTransactions > 0
+    }
+    return matchesGrade
+  })
 
   return (
     <div className="space-y-6">
@@ -328,8 +344,17 @@ export default function ManagerSuppliersClient({
       {/* Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Total Active */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-          <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-600 shrink-0">
+        <button
+          onClick={() => setSelectedGradeFilter(prev => prev === "active" ? "all" : "active")}
+          className={`rounded-2xl p-5 shadow-sm border flex items-center gap-4 relative overflow-hidden text-left transition-all cursor-pointer outline-none ${
+            selectedGradeFilter === "active"
+              ? "bg-cyan-50/50 border-cyan-500 ring-2 ring-cyan-500/20 scale-[1.02] shadow-md"
+              : "bg-white border-slate-100 hover:border-slate-300 hover:shadow"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            selectedGradeFilter === "active" ? "bg-cyan-600 text-white" : "bg-cyan-50 text-cyan-600"
+          }`}>
             <Users className="w-5 h-5" />
           </div>
           <div>
@@ -338,11 +363,23 @@ export default function ManagerSuppliersClient({
               {activeLapakCount} <span className="text-xs font-semibold text-slate-500">/ {totalLapakCount} Lapak</span>
             </p>
           </div>
-        </div>
+          {selectedGradeFilter === "active" && (
+            <div className="absolute right-2 top-2 bg-cyan-600 text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase">Filter Aktif</div>
+          )}
+        </button>
 
         {/* Metric 2: Grade A */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+        <button
+          onClick={() => setSelectedGradeFilter(prev => prev === "A" ? "all" : "A")}
+          className={`rounded-2xl p-5 shadow-sm border flex items-center gap-4 relative overflow-hidden text-left transition-all cursor-pointer outline-none ${
+            selectedGradeFilter === "A"
+              ? "bg-emerald-50/50 border-emerald-500 ring-2 ring-emerald-500/20 scale-[1.02] shadow-md"
+              : "bg-white border-slate-100 hover:border-slate-300 hover:shadow"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            selectedGradeFilter === "A" ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-600"
+          }`}>
             <Award className="w-5 h-5" />
           </div>
           <div>
@@ -351,11 +388,23 @@ export default function ManagerSuppliersClient({
               {gradeACount} <span className="text-xs font-semibold text-slate-400">Lapak</span>
             </p>
           </div>
-        </div>
+          {selectedGradeFilter === "A" && (
+            <div className="absolute right-2 top-2 bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase">Filter Aktif</div>
+          )}
+        </button>
 
         {/* Metric 3: Grade B */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+        <button
+          onClick={() => setSelectedGradeFilter(prev => prev === "B" ? "all" : "B")}
+          className={`rounded-2xl p-5 shadow-sm border flex items-center gap-4 relative overflow-hidden text-left transition-all cursor-pointer outline-none ${
+            selectedGradeFilter === "B"
+              ? "bg-blue-50/50 border-blue-500 ring-2 ring-blue-500/20 scale-[1.02] shadow-md"
+              : "bg-white border-slate-100 hover:border-slate-300 hover:shadow"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            selectedGradeFilter === "B" ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600"
+          }`}>
             <Activity className="w-5 h-5" />
           </div>
           <div>
@@ -364,11 +413,23 @@ export default function ManagerSuppliersClient({
               {gradeBCount} <span className="text-xs font-semibold text-slate-400">Lapak</span>
             </p>
           </div>
-        </div>
+          {selectedGradeFilter === "B" && (
+            <div className="absolute right-2 top-2 bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase">Filter Aktif</div>
+          )}
+        </button>
 
         {/* Metric 4: Grade C */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 relative overflow-hidden">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+        <button
+          onClick={() => setSelectedGradeFilter(prev => prev === "C" ? "all" : "C")}
+          className={`rounded-2xl p-5 shadow-sm border flex items-center gap-4 relative overflow-hidden text-left transition-all cursor-pointer outline-none ${
+            selectedGradeFilter === "C"
+              ? "bg-rose-50/50 border-rose-500 ring-2 ring-rose-500/20 scale-[1.02] shadow-md"
+              : "bg-white border-slate-100 hover:border-slate-300 hover:shadow"
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            selectedGradeFilter === "C" ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-600"
+          }`}>
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
@@ -377,8 +438,32 @@ export default function ManagerSuppliersClient({
               {gradeCCount} <span className="text-xs font-semibold text-slate-400">Lapak</span>
             </p>
           </div>
-        </div>
+          {selectedGradeFilter === "C" && (
+            <div className="absolute right-2 top-2 bg-rose-600 text-white text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase">Filter Aktif</div>
+          )}
+        </button>
       </div>
+
+      {/* Active Grade Filter Alert */}
+      {selectedGradeFilter !== "all" && (
+        <div className="bg-indigo-50 border border-indigo-150 border-indigo-200 text-indigo-700 px-4 py-3 rounded-2xl text-xs flex justify-between items-center font-bold shadow-sm animate-in fade-in duration-200">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            Menampilkan hasil untuk filter: <span className="underline font-black">{
+              selectedGradeFilter === "active" ? "Mitra Aktif" :
+              selectedGradeFilter === "A" ? "Kinerja A (Sangat Bagus)" :
+              selectedGradeFilter === "B" ? "Kinerja B (Bagus/Cukup)" :
+              "Kinerja C (Perlu Evaluasi)"
+            }</span> ({filteredSuppliers.length} Lapak ditemukan)
+          </span>
+          <button
+            onClick={() => setSelectedGradeFilter("all")}
+            className="text-indigo-650 hover:text-indigo-800 underline font-black text-xs cursor-pointer ml-2"
+          >
+            Bersihkan Filter ×
+          </button>
+        </div>
+      )}
 
       {/* Filter and Search Section */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-6">
