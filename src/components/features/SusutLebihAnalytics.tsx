@@ -178,158 +178,88 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
             <p className="text-xs mt-1">Data muncul setelah transaksi melewati proses double-check admin.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="bg-slate-800 text-white">
-                  <th className="sticky left-0 z-10 bg-slate-800 text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
-                    #
-                  </th>
-                  <th className="sticky left-8 z-10 bg-slate-800 text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
-                    Nama Lapak
-                  </th>
-                  <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap text-slate-300">
-                    Gudang
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
-                    Timbang Lapak
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
-                    Timbang Gudang
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap text-rose-300 border-l border-slate-600">
-                    Susut (KG)
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap text-rose-300">
-                    % Susut
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap text-emerald-300 border-l border-slate-600">
-                    Lebih (KG)
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap text-emerald-300">
-                    % Lebih
-                  </th>
-                  <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap border-l border-slate-600">
-                    Transaksi
-                  </th>
-                  <th className="text-center px-4 py-3 font-semibold text-xs uppercase tracking-wider whitespace-nowrap border-l border-slate-600">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((row, idx) => {
-                  const netSelisih = row.totalGudang - row.totalLapak
-                  const isNetSusut = netSelisih < 0
-                  const isNetLebih = netSelisih > 0
+          <div className="space-y-4">
+            {sorted.map((row, idx) => {
+              const netSelisih = row.totalGudang - row.totalLapak
+              const isNetSusut = netSelisih < 0
+              const isNetLebih = netSelisih > 0
 
-                  return (
-                    <tr
-                      key={row.supplierId}
-                      className={`transition-colors hover:bg-slate-50 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}
-                    >
-                      <td className={`sticky left-0 z-10 px-4 py-3 text-xs font-bold text-slate-400 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
-                        {idx + 1}
-                      </td>
-                      <td className={`sticky left-8 z-10 px-4 py-3 font-semibold text-slate-800 whitespace-nowrap ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
-                        <div className="flex items-center gap-2">
-                          {isNetSusut && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />}
-                          {isNetLebih && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
-                          {!isNetSusut && !isNetLebih && <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />}
-                          {row.namaLapak}
+              return (
+                <div
+                  key={row.supplierId}
+                  className="bg-white hover:bg-slate-50/50 rounded-2xl p-5 border border-slate-100 shadow-sm transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-5 group"
+                >
+                  {/* Info Lapak */}
+                  <div className="flex items-start gap-3 lg:w-1/4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-extrabold text-sm shrink-0 shadow-inner">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-slate-800 text-base flex items-center gap-2 flex-wrap">
+                        {row.namaLapak}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100/50">
+                          {row.transaksi}x Transaksi
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400 mt-1 block">
+                        CC: <span className="font-bold text-slate-600">{row.warehouseName}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Rincian Timbangan */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
+                    {/* Lapak */}
+                    <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100/50">
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase block">Timbang Lapak</span>
+                      <span className="font-mono text-slate-700 font-bold text-sm block mt-1">{fmtKg(row.totalLapak)}</span>
+                    </div>
+
+                    {/* Gudang */}
+                    <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100/50">
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase block">Timbang Gudang</span>
+                      <span className="font-mono text-slate-800 font-bold text-sm block mt-1">{fmtKg(row.totalGudang)}</span>
+                    </div>
+
+                    {/* Susut */}
+                    <div className="bg-rose-50/40 rounded-xl p-3 border border-rose-100/50">
+                      <span className="text-[10px] text-rose-500 font-semibold uppercase block">Susut (KG)</span>
+                      {row.totalSusut > 0 ? (
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="font-mono text-rose-600 font-extrabold text-sm">{fmtKg(row.totalSusut)}</span>
+                          <span className="text-[9px] font-bold text-rose-500">({fmtPct(row.pctSusut)})</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                        {row.warehouseName}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-slate-600 whitespace-nowrap text-xs">
-                        {fmtKg(row.totalLapak)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-slate-600 whitespace-nowrap text-xs">
-                        {fmtKg(row.totalGudang)}
-                      </td>
-                      {/* Susut */}
-                      <td className="px-4 py-3 text-right border-l border-slate-100 whitespace-nowrap">
-                        {row.totalSusut > 0 ? (
-                          <span className="font-bold text-rose-600">{fmtKg(row.totalSusut)}</span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        {row.totalSusut > 0 ? (
-                          <span className="text-xs font-semibold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">
-                            {fmtPct(row.pctSusut)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-                      {/* Lebih */}
-                      <td className="px-4 py-3 text-right border-l border-slate-100 whitespace-nowrap">
-                        {row.totalLebih > 0 ? (
-                          <span className="font-bold text-emerald-600">{fmtKg(row.totalLebih)}</span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        {row.totalLebih > 0 ? (
-                          <span className="text-xs font-semibold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
-                            {fmtPct(row.pctLebih)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-500 border-l border-slate-100 whitespace-nowrap text-xs">
-                        {fmtAngka(row.transaksi)}x
-                      </td>
-                      <td className="px-4 py-3 text-center border-l border-slate-100 whitespace-nowrap">
-                        <button
-                          onClick={() => setSelectedLapak(row)}
-                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold px-3 py-1.5 rounded-xl text-xs transition-all border border-indigo-100 shadow-sm"
-                        >
-                          🔍 Cek Detail
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              {/* Footer total */}
-              <tfoot>
-                <tr className="bg-slate-800 text-white font-bold border-t-2 border-slate-600">
-                  <td className="sticky left-0 z-10 bg-slate-800 px-4 py-3 text-xs" />
-                  <td className="sticky left-8 z-10 bg-slate-800 px-4 py-3 text-xs uppercase tracking-wider">
-                    TOTAL ({sorted.length} Lapak)
-                  </td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {fmtKg(filteredSummary.totalLapak)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">
-                    {fmtKg(filteredSummary.totalGudang)}
-                  </td>
-                  <td className="px-4 py-3 text-right border-l border-slate-600">
-                    <span className="text-rose-300 font-mono text-xs">{fmtKg(filteredSummary.totalSusut)}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-xs font-bold text-rose-300">{fmtPct(filteredSusutPct)}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right border-l border-slate-600">
-                    <span className="text-emerald-300 font-mono text-xs">{fmtKg(filteredSummary.totalLebih)}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-xs font-bold text-emerald-300">{fmtPct(filteredLebihPct)}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right border-l border-slate-600 text-xs">
-                    {fmtAngka(sorted.reduce((s, d) => s + d.transaksi, 0))}x
-                  </td>
-                  <td className="border-l border-slate-600 px-4 py-3 text-xs" />
-                </tr>
-              </tfoot>
-            </table>
+                      ) : (
+                        <span className="text-slate-300 text-xs block mt-1.5">—</span>
+                      )}
+                    </div>
+
+                    {/* Lebih */}
+                    <div className="bg-emerald-50/40 rounded-xl p-3 border border-emerald-100/50">
+                      <span className="text-[10px] text-emerald-600 font-semibold uppercase block">Lebih (KG)</span>
+                      {row.totalLebih > 0 ? (
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="font-mono text-emerald-600 font-extrabold text-sm">{fmtKg(row.totalLebih)}</span>
+                          <span className="text-[9px] font-bold text-emerald-550 text-emerald-600">({fmtPct(row.pctLebih)})</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-xs block mt-1.5">—</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Aksi */}
+                  <div className="flex items-center justify-end lg:w-40 shrink-0">
+                    <button
+                      onClick={() => setSelectedLapak(row)}
+                      className="w-full sm:w-auto bg-slate-900 text-white hover:bg-slate-800 font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-slate-950/10 flex items-center justify-center gap-1.5"
+                    >
+                      🔍 Cek Detail Susut
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
