@@ -7,6 +7,7 @@ import ManagerCalendar from "@/components/features/ManagerCalendar"
 import TopLapakAnalytics from "@/components/features/TopLapakAnalytics"
 import SusutLebihAnalytics from "@/components/features/SusutLebihAnalytics"
 import ExpenseAnalytics from "@/components/features/ExpenseAnalytics"
+import DpSummaryAnalytics from "@/components/features/DpSummaryAnalytics"
 import { redirect } from "next/navigation"
 import PendingTerminAlerts from "@/components/features/PendingTerminAlerts"
 import MonthYearFilter from "@/components/features/MonthYearFilter"
@@ -373,6 +374,60 @@ export default async function ManagerDashboard({
   }
 
   // ──────────────────────────────────────────
+  // 11. Rekap DP & Kasbon per Lapak
+  // ──────────────────────────────────────────
+  const approvedDps = await prisma.downPayment.findMany({
+    where: {
+      status_approval: "approved"
+    },
+    include: {
+      supplier: {
+        include: {
+          warehouse: true
+        }
+      }
+    }
+  })
+
+  const dpSummaryMap: Record<string, {
+    supplierId: string
+    namaLapak: string
+    warehouseId: string
+    warehouseName: string
+    totalDp: number
+    totalUsed: number
+    sisaDp: number
+    transaksiDp: number
+  }> = {}
+
+  for (const dp of approvedDps) {
+    if (!dp.supplier) continue
+    const sid = dp.supplierId
+    const wId = dp.supplier.warehouseId || "none"
+    const wName = dp.supplier.warehouse?.nama || "—"
+    
+    if (!dpSummaryMap[sid]) {
+      dpSummaryMap[sid] = {
+        supplierId: sid,
+        namaLapak: dp.supplier.nama,
+        warehouseId: wId,
+        warehouseName: wName,
+        totalDp: 0,
+        totalUsed: 0,
+        sisaDp: 0,
+        transaksiDp: 0
+      }
+    }
+    const entry = dpSummaryMap[sid]
+    entry.totalDp += dp.nominal_disetujui || 0
+    entry.totalUsed += dp.dp_used_amount || 0
+    entry.sisaDp += dp.sisa_dp || 0
+    entry.transaksiDp += 1
+  }
+
+  const dpSummaryData = Object.values(dpSummaryMap).sort((a, b) => b.sisaDp - a.sisaDp)
+
+  // ──────────────────────────────────────────
   // 9. SKU Average Prices by Spec (Gabyuk / Grading) per Warehouse / Collection Center
   // ──────────────────────────────────────────
   const skuPricesMap: Record<string, {
@@ -625,6 +680,12 @@ export default async function ManagerDashboard({
       <SusutLebihAnalytics
         lapakData={lapakSusutData}
         summary={susutLebihSummary}
+        warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
+      />
+
+      {/* Rekap Saldo DP & Kasbon per Lapak */}
+      <DpSummaryAnalytics
+        dpData={dpSummaryData}
         warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
       />
 
