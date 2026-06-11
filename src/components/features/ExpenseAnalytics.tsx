@@ -22,27 +22,6 @@ export default function ExpenseAnalytics({ globalExpenses, warehouseExpenses }: 
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-rose-50 to-orange-50">
-          <h3 className="text-lg font-bold text-slate-800">Total Pengeluaran (Semua Gudang)</h3>
-          <p className="text-xs text-slate-500 mt-1">Akumulasi nilai pembelian yang harus/telah dibayarkan ke supplier berdasarkan periode.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-          <div className="p-6 text-center hover:bg-slate-50/50 transition-colors">
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Hari Ini</div>
-            <div className="text-2xl font-extrabold text-rose-600">{formatRp(globalExpenses.harian)}</div>
-          </div>
-          <div className="p-6 text-center hover:bg-slate-50/50 transition-colors">
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Minggu Ini</div>
-            <div className="text-2xl font-extrabold text-rose-600">{formatRp(globalExpenses.mingguan)}</div>
-          </div>
-          <div className="p-6 text-center hover:bg-slate-50/50 transition-colors">
-            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Bulan Ini</div>
-            <div className="text-2xl font-extrabold text-rose-600">{formatRp(globalExpenses.bulanan)}</div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {warehouseExpenses.map((w) => (
           <div key={w.id} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
