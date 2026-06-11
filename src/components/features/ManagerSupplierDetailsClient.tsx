@@ -17,9 +17,13 @@ import {
   Wallet,
   TrendingUp,
   Warehouse as WarehouseIcon,
-  ChevronRight
+  ChevronRight,
+  Star,
+  Award,
+  Activity,
+  AlertTriangle
 } from "lucide-react"
-import { fmtKg, fmtRp, fmtTon } from "@/lib/format"
+import { fmtKg, fmtRp, fmtTon, fmtPct } from "@/lib/format"
 
 interface PurchaseItem {
   id: string
@@ -38,6 +42,8 @@ interface Purchase {
   total_nilai_setelah_retur: number | null
   total_nilai_sebelum_retur: number | null
   total_dibayar: number | null
+  berat_timbangan_lapak: number | null
+  berat_timbangan_gudang: number | null
   staff: {
     nama: string
   }
@@ -114,6 +120,93 @@ export default function ManagerSupplierDetailsClient({ supplier }: { supplier: S
   const remainingDp = supplier.downPayments
     .filter(dp => dp.status_approval === "approved")
     .reduce((sum, dp) => sum + (dp.sisa_dp || 0), 0)
+
+  // Monthly Performance Calculations
+  const now = new Date()
+  const currentMonthNum = now.getMonth() + 1
+  const currentYearNum = now.getFullYear()
+  const namaBulanIndo = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ][currentMonthNum - 1]
+
+  const thisMonthPurchases = supplier.purchases.filter(p => {
+    if (p.status_approval !== "approved" && p.status_approval !== "sudah_transfer") return false
+    const pDate = new Date(p.createdAt)
+    return (pDate.getUTCMonth() + 1) === currentMonthNum && pDate.getUTCFullYear() === currentYearNum
+  })
+
+  const mTransactions = thisMonthPurchases.length
+  const mGudangWeight = thisMonthPurchases.reduce((sum, p) => sum + (p.berat_timbangan_gudang || 0), 0)
+
+  let mQtyScore = 0
+  let mTargetPct = 0
+  if (supplier.target_bulanan_kg > 0) {
+    mTargetPct = (mGudangWeight / supplier.target_bulanan_kg) * 100
+    mQtyScore = Math.min(mTargetPct, 100)
+  } else {
+    if (mGudangWeight >= 5000) mQtyScore = 100
+    else if (mGudangWeight >= 2000) mQtyScore = 80
+    else if (mGudangWeight >= 500) mQtyScore = 60
+    else if (mGudangWeight > 0) mQtyScore = 40
+    else mQtyScore = 0
+  }
+
+  let mTotalSusut = 0
+  let mTotalLapakWeight = 0
+  thisMonthPurchases.forEach(p => {
+    const lapak = p.berat_timbangan_lapak || 0
+    const gudang = p.berat_timbangan_gudang || 0
+    mTotalLapakWeight += lapak
+    const selisih = gudang - lapak
+    if (selisih < 0) {
+      mTotalSusut += Math.abs(selisih)
+    }
+  })
+  const mPctSusut = mTotalLapakWeight > 0 ? (mTotalSusut / mTotalLapakWeight) * 100 : 0
+  let mQualityScore = 100
+  if (mTotalLapakWeight > 0) {
+    mQualityScore = Math.max(0, 100 - (mPctSusut * 25))
+  }
+
+  let mTotalSubtotal = 0
+  let mTotalItemWeight = 0
+  thisMonthPurchases.forEach(p => {
+    p.items.forEach(item => {
+      const itemWeight = item.berat_final_item || 0
+      const itemSubtotal = item.subtotal || (itemWeight * item.harga_per_kg) || 0
+      mTotalSubtotal += itemSubtotal
+      mTotalItemWeight += itemWeight
+    })
+  })
+  const mAvgPrice = mTotalItemWeight > 0 ? mTotalSubtotal / mTotalItemWeight : 0
+
+  let mOpi = 0
+  let mGrade = "—"
+  let mGradeLabel = "Belum Ada Data"
+  let mGradeColor = "bg-slate-50 text-slate-400 border-slate-200"
+  let mStars = 0
+
+  if (mTransactions > 0) {
+    mOpi = (mQtyScore * 0.5) + (mQualityScore * 0.5)
+    if (mOpi >= 85) {
+      mGrade = "A"
+      mGradeLabel = "Sangat Bagus"
+      mGradeColor = "bg-emerald-50 text-emerald-700 border-emerald-250 border-emerald-200"
+      mStars = 3
+    } else if (mOpi >= 60) {
+      mGrade = "B"
+      mGradeLabel = "Bagus/Cukup"
+      mGradeColor = "bg-blue-50 text-blue-700 border-blue-200"
+      mStars = 2
+    } else {
+      mGrade = "C"
+      mGradeLabel = "Perlu Evaluasi"
+      mGradeColor = "bg-rose-50 text-rose-700 border-rose-200"
+      mStars = 1
+    }
+  }
+
 
   // Filtered purchases
   const filteredPurchases = supplier.purchases.filter(p => {
@@ -295,6 +388,134 @@ export default function ManagerSupplierDetailsClient({ supplier }: { supplier: S
             </div>
           )}
         </div>
+      </div>
+
+      {/* Monthly Performance Dashboard Card */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-50 pb-3">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+              <Award className="w-5 h-5 text-indigo-600" />
+              Rapor Kinerja Lapak Bulan Ini ({namaBulanIndo} {currentYearNum})
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Evaluasi kinerja berjalan untuk bulan aktif berdasarkan data timbangan lapak vs CC.
+            </p>
+          </div>
+          {mTransactions > 0 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`px-3 py-1 rounded-xl text-xs font-black border tracking-wide shadow-sm ${mGradeColor}`}>
+                Grade {mGrade} ({mGradeLabel})
+              </span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-4 h-4 ${
+                      i < mStars ? "fill-amber-400 text-amber-400 animate-pulse" : "text-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {mTransactions === 0 ? (
+          <div className="text-center text-slate-400 text-xs py-8 border border-dashed border-slate-200 rounded-2xl">
+            <Activity className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="font-semibold">Belum ada transaksi di bulan ini.</p>
+            <p className="mt-0.5">Penilaian performa berjalan akan muncul setelah ada pengiriman yang disetujui bulan ini.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Indicator 1: Kuantitas (Volume) */}
+            <div className="bg-slate-50/70 border border-slate-100 p-4 rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-cyan-600" />
+                  Kuantitas (Volume)
+                </span>
+                <span className="text-xs font-extrabold text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded">
+                  Bobot 50%
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-2xl font-black text-slate-800 font-mono">
+                  {fmtKg(mGudangWeight)}
+                  <span className="text-xs text-slate-405 block font-semibold font-sans mt-0.5">({fmtTon(mGudangWeight)}) dikirim</span>
+                </p>
+                {supplier.target_bulanan_kg > 0 ? (
+                  <div className="space-y-1">
+                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          mTargetPct >= 100 ? "bg-emerald-500" : mTargetPct >= 50 ? "bg-cyan-500" : "bg-amber-500"
+                        }`}
+                        style={{ width: `${Math.min(mTargetPct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold">
+                      <span>Target: {fmtTon(supplier.target_bulanan_kg)}</span>
+                      <span className="text-slate-650">{mTargetPct.toFixed(1)}% Tercapai</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-450 italic font-semibold text-slate-400">Target bulanan belum dikonfigurasi.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Indicator 2: Kualitas (Susut Timbangan) */}
+            <div className="bg-slate-50/70 border border-slate-100 p-4 rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-indigo-600" />
+                  Kualitas (Susut)
+                </span>
+                <span className="text-xs font-extrabold text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded">
+                  Bobot 50%
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-2xl font-black text-slate-800 font-mono">
+                  {mPctSusut === 0 ? "0%" : `${mPctSusut.toFixed(2)}%`}
+                  <span className="text-xs text-slate-405 block font-semibold font-sans mt-0.5">Rerata penyusutan timbangan</span>
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={`px-2 py-0.5 rounded-lg font-bold text-[10px] uppercase border ${
+                    mPctSusut <= 1.0 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : mPctSusut <= 3.0 ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}>
+                    Grade {mPctSusut <= 1.0 ? "A - Rendah" : mPctSusut <= 3.0 ? "B - Normal" : "C - Tinggi"}
+                  </span>
+                  <span className="text-[10px] text-slate-450 font-bold font-mono">({fmtKg(mTotalSusut)} susut)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Indicator 3: Harga Beli Rata-rata */}
+            <div className="bg-slate-50/70 border border-slate-100 p-4 rounded-2xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-violet-600" />
+                  Harga Rata-rata
+                </span>
+                <span className="text-xs font-extrabold text-slate-550 bg-slate-200/50 px-2 py-0.5 rounded text-slate-550">
+                  Rerata Beli
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-2xl font-black text-slate-800 font-mono">
+                  {fmtRp(mAvgPrice)}
+                  <span className="text-xs text-slate-405 block font-semibold font-sans mt-0.5">Per kilogram (Rerata Tertimbang)</span>
+                </p>
+                <div className="text-[10px] text-slate-450 font-bold flex items-center gap-1 text-slate-500">
+                  <span>Frekuensi: <strong>{mTransactions}x pengiriman</strong> disetujui</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Metrics Row */}
