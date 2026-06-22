@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface PurchaseItem {
@@ -34,12 +34,23 @@ interface Purchase {
   potongan_karung: number | null
   berat_potongan_karung: number | null
   harga_potongan_karung: number | null
+  dp_yang_digunakan: number | null
+  total_dibayar: number | null
   items: PurchaseItem[]
 }
 
 interface Supplier {
   id: string
   nama: string
+}
+
+interface DpRecord {
+  id: string
+  nominal_diajukan: number
+  nominal_disetujui: number | null
+  sisa_dp: number | null
+  dp_used_amount: number
+  keterangan: string | null
 }
 
 const SKU_OPTIONS = ["PET Clear", "PET Biru", "PET Hijau", "PET Kuning", "PET Mix", "HDPE", "PP", "Galon"]
@@ -60,10 +71,12 @@ function fmtRp(n: number) {
 export default function EditTransaksiForm({
   purchase: initialPurchase,
   suppliers,
+  dpTersedia = [],
   backUrl = "/dashboard/admin/history",
 }: {
   purchase: Purchase
   suppliers: Supplier[]
+  dpTersedia?: DpRecord[]
   backUrl?: string
 }) {
   const router = useRouter()
@@ -88,6 +101,9 @@ export default function EditTransaksiForm({
   const [beratPotSusut, setBeratPotSusut]     = useState(initialPurchase.berat_potongan_susut?.toString() || "0")
   const [beratPotAir, setBeratPotAir]         = useState(initialPurchase.berat_potongan_air?.toString() || "0")
   const [beratPotKarung, setBeratPotKarung]   = useState(initialPurchase.berat_potongan_karung?.toString() || "0")
+
+  // DP field
+  const [dpDigunakan, setDpDigunakan] = useState((initialPurchase.dp_yang_digunakan ?? 0).toString())
 
   // Items
   const [items, setItems] = useState<PurchaseItem[]>(
@@ -129,10 +145,22 @@ export default function EditTransaksiForm({
   const hargaPotAir     = (parseFloat(beratPotAir) || 0) * (parseFloat(potAir) || 0)
   const hargaPotKarung  = (parseFloat(beratPotKarung) || 0) * (parseFloat(potKarung) || 0)
   const totalAfterCuts  = totalBeforeCuts - hargaPotSampah - hargaPotSusut - hargaPotAir - hargaPotKarung
+  const dpValue         = parseFloat(dpDigunakan) || 0
+  const totalDibayar    = totalAfterCuts - dpValue
+
+  // DP availability check
+  const totalSisaDp = dpTersedia.reduce((s, d) => s + (d.sisa_dp ?? 0), 0)
+  const oldDp = initialPurchase.dp_yang_digunakan ?? 0
+  const dpDelta = dpValue - oldDp
+  const isDpInsufficient = dpDelta > 0 && dpDelta > totalSisaDp
 
   const handleSave = async () => {
     if (items.length === 0) {
       setError("Minimal harus ada 1 item.")
+      return
+    }
+    if (isDpInsufficient) {
+      setError(`Saldo DP tidak mencukupi. Tersedia: ${fmtRp(totalSisaDp)}, Tambahan dibutuhkan: ${fmtRp(dpDelta)}`)
       return
     }
     setSaving(true)
@@ -152,12 +180,13 @@ export default function EditTransaksiForm({
           potongan_susut:   potSusut,    berat_potongan_susut:  beratPotSusut,   harga_potongan_susut:  hargaPotSusut,
           potongan_air:     potAir,      berat_potongan_air:    beratPotAir,     harga_potongan_air:    hargaPotAir,
           potongan_karung:  potKarung,   berat_potongan_karung: beratPotKarung,  harga_potongan_karung: hargaPotKarung,
+          dp_yang_digunakan: dpValue,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan")
       setSuccess(true)
-      setTimeout(() => router.push(backUrl), 1200)
+      setTimeout(() => router.push(backUrl), 1500)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -382,6 +411,113 @@ export default function EditTransaksiForm({
         </div>
       </div>
 
+      {/* ===== KOREKSI DP ===== */}
+      <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-amber-800 uppercase tracking-wider">Koreksi DP (Down Payment)</h3>
+            <p className="text-xs text-amber-600 mt-0.5">Perbaiki potongan DP yang lupa diinput saat double cek</p>
+          </div>
+        </div>
+
+        {/* DP Available Info */}
+        {dpTersedia.length > 0 ? (
+          <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <p className="text-xs font-bold text-emerald-700 mb-2">💰 DP Tersedia untuk Supplier Ini:</p>
+            <div className="space-y-1.5">
+              {dpTersedia.map(dp => (
+                <div key={dp.id} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">{dp.keterangan || "DP Tanpa Keterangan"}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400">Disetujui: {fmtRp(dp.nominal_disetujui ?? 0)}</span>
+                    <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg">
+                      Sisa: {fmtRp(dp.sisa_dp ?? 0)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t border-emerald-200 pt-2 mt-2 flex justify-between text-xs font-bold">
+                <span className="text-emerald-700">Total Sisa DP:</span>
+                <span className="text-emerald-700">{fmtRp(totalSisaDp)}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
+            <p className="text-xs text-slate-500">ℹ Tidak ada DP aktif untuk supplier ini. Nilai DP harus 0.</p>
+          </div>
+        )}
+
+        {/* DP Input */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              Nominal DP yang Digunakan (Rp)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={dpDigunakan}
+                onChange={e => setDpDigunakan(e.target.value)}
+                min={0}
+                max={dpTersedia.length > 0 ? totalSisaDp + oldDp : 0}
+                placeholder="0"
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 transition-all ${
+                  isDpInsufficient
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50"
+                    : dpValue > 0
+                    ? "border-emerald-400 focus:ring-emerald-400 bg-emerald-50"
+                    : "border-slate-200 focus:ring-amber-400 focus:border-amber-400"
+                }`}
+              />
+            </div>
+            {oldDp > 0 && (
+              <p className="text-[10px] text-slate-400 mt-1">
+                DP sebelumnya: {fmtRp(oldDp)}
+              </p>
+            )}
+            {isDpInsufficient && (
+              <p className="text-[11px] text-rose-600 font-semibold mt-1.5">
+                ⚠ Saldo DP tidak mencukupi! Tersedia: {fmtRp(totalSisaDp + oldDp)}
+              </p>
+            )}
+            {dpValue > 0 && !isDpInsufficient && dpDelta > 0 && (
+              <p className="text-[11px] text-emerald-600 font-semibold mt-1.5">
+                ✓ Saldo DP akan berkurang {fmtRp(dpDelta)}
+              </p>
+            )}
+            {dpDelta < 0 && (
+              <p className="text-[11px] text-blue-600 font-semibold mt-1.5">
+                ↩ Saldo DP akan dikembalikan {fmtRp(Math.abs(dpDelta))}
+              </p>
+            )}
+          </div>
+
+          {/* DP Summary */}
+          <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+            <div className="flex justify-between text-slate-500 text-xs">
+              <span>Total setelah potongan:</span>
+              <span className="font-mono">{fmtRp(totalAfterCuts)}</span>
+            </div>
+            <div className={`flex justify-between text-xs ${dpValue > 0 ? "text-rose-600" : "text-slate-400"}`}>
+              <span>Potongan DP:</span>
+              <span className="font-mono font-semibold">− {fmtRp(dpValue)}</span>
+            </div>
+            <div className="border-t border-slate-200 pt-2 flex justify-between">
+              <span className="text-xs font-bold text-slate-700">Total Dibayar:</span>
+              <span className={`font-mono font-extrabold text-sm ${totalDibayar < 0 ? "text-rose-600" : "text-slate-800"}`}>
+                {fmtRp(Math.max(0, totalDibayar))}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Grand Total */}
       <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -392,6 +528,12 @@ export default function EditTransaksiForm({
           <div className="text-right text-xs text-cyan-200 space-y-0.5">
             <p>Sebelum potongan: {fmtRp(totalBeforeCuts)}</p>
             <p>Total potongan: − {fmtRp(hargaPotSampah + hargaPotSusut + hargaPotAir + hargaPotKarung)}</p>
+            {dpValue > 0 && <p className="text-amber-200 font-semibold">DP digunakan: − {fmtRp(dpValue)}</p>}
+            {dpValue > 0 && (
+              <p className="text-white font-bold pt-1 border-t border-cyan-400/50">
+                Total dibayar: {fmtRp(Math.max(0, totalDibayar))}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -418,8 +560,8 @@ export default function EditTransaksiForm({
         </button>
         <button
           onClick={handleSave}
-          disabled={saving || success}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2"
+          disabled={saving || success || isDpInsufficient}
+          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2"
         >
           {saving ? (
             <>

@@ -159,20 +159,37 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
       // If DP used, update Supplier's DP
       if (final_dp_used > 0) {
-        // Need to find an approved DP that has sisa_dp >= final_dp_used
-        // For simplicity, let's just assume we update the most recent one or aggregate it later.
-        // The PRD mentions DP is per supplier.
-        const dp = await tx.downPayment.findFirst({
-          where: { supplierId: currentPurchase.supplierId, status_approval: 'approved', sisa_dp: { gte: final_dp_used } }
+        const approvedDps = await tx.downPayment.findMany({
+          where: {
+            supplierId: currentPurchase.supplierId,
+            status_approval: "approved",
+            sisa_dp: { gt: 0 },
+          },
+          orderBy: { tanggal_approval: "asc" }, // FIFO
         })
-        if (dp) {
+
+        const totalAvailable = approvedDps.reduce((sum, dp) => sum + (dp.sisa_dp ?? 0), 0)
+        if (totalAvailable < final_dp_used) {
+          throw new Error(
+            `Saldo DP tidak mencukupi. Dibutuhkan: Rp ${final_dp_used.toLocaleString("id-ID")}, namun hanya tersedia: Rp ${totalAvailable.toLocaleString("id-ID")}.`
+          )
+        }
+
+        let amountToDeduct = final_dp_used
+        for (const dp of approvedDps) {
+          if (amountToDeduct <= 0) break
+          const currentSisa = dp.sisa_dp ?? 0
+          const deduct = Math.min(amountToDeduct, currentSisa)
+
           await tx.downPayment.update({
             where: { id: dp.id },
             data: {
-              dp_used_amount: { increment: final_dp_used },
-              sisa_dp: { decrement: final_dp_used }
-            }
+              dp_used_amount: { increment: deduct },
+              sisa_dp: { decrement: deduct },
+            },
           })
+
+          amountToDeduct -= deduct
         }
       }
 

@@ -31,6 +31,24 @@ export default async function ManagerEditTransaksiPage({ params }: { params: Pro
     orderBy: { nama: "asc" }
   })
 
+  // Fetch approved DP records for this supplier (for DP correction)
+  const dpTersedia = await prisma.downPayment.findMany({
+    where: {
+      supplierId: purchase.supplierId,
+      status_approval: "approved",
+      sisa_dp: { gt: 0 },
+    },
+    orderBy: { tanggal_approval: "asc" },
+    select: {
+      id: true,
+      nominal_diajukan: true,
+      nominal_disetujui: true,
+      sisa_dp: true,
+      dp_used_amount: true,
+      keterangan: true,
+    }
+  })
+
   const purchaseSerialized = {
     ...purchase,
     createdAt: purchase.createdAt.toISOString(),
@@ -71,6 +89,7 @@ export default async function ManagerEditTransaksiPage({ params }: { params: Pro
       <EditTransaksiForm
         purchase={purchaseSerialized as any}
         suppliers={suppliers}
+        dpTersedia={dpTersedia}
         backUrl="/dashboard/manager/history"
       />
     </div>

@@ -42,17 +42,43 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         approvedByUserId: (session.user as any).id,
         approvedAt: new Date()
       }
-      
-      // If there was a DP used in double check, we need to return it back to Supplier's sisa_dp
-      if (currentPurchase.dp_yang_digunakan && currentPurchase.dp_yang_digunakan > 0) {
-         // Logic to refund DP can go here
-         // ...
-      }
     }
 
-    const updatedPurchase = await prisma.purchase.update({
-      where: { id: purchaseId },
-      data: updateData
+    const updatedPurchase = await prisma.$transaction(async (tx) => {
+      // If there was a DP used in double check, we need to return it back to Supplier's sisa_dp
+      if (action === "reject" && currentPurchase.dp_yang_digunakan && currentPurchase.dp_yang_digunakan > 0) {
+        const refund = currentPurchase.dp_yang_digunakan
+        const dpsWithUsedAmount = await tx.downPayment.findMany({
+          where: {
+            supplierId: currentPurchase.supplierId,
+            status_approval: "approved",
+            dp_used_amount: { gt: 0 },
+          },
+          orderBy: { tanggal_approval: "desc" }, // LIFO refund
+        })
+
+        let amountToRefund = refund
+        for (const dp of dpsWithUsedAmount) {
+          if (amountToRefund <= 0) break
+          const currentUsed = dp.dp_used_amount ?? 0
+          const refundAmount = Math.min(amountToRefund, currentUsed)
+
+          await tx.downPayment.update({
+            where: { id: dp.id },
+            data: {
+              dp_used_amount: { decrement: refundAmount },
+              sisa_dp: { increment: refundAmount },
+            },
+          })
+
+          amountToRefund -= refundAmount
+        }
+      }
+
+      return await tx.purchase.update({
+        where: { id: purchaseId },
+        data: updateData
+      })
     })
 
     await createAuditLog({
