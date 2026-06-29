@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     const {
       supplierId,
       metode_pembayaran_terpilih,
+      jenis_pengambilan,
       items,
       potongan_sampah,
       berat_potongan_sampah,
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
         supplierId,
         userIdStaff: (session.user as any).id,
         metode_pembayaran_terpilih,
+        jenis_pengambilan: jenis_pengambilan || "AMBIL",
         berat_timbangan_lapak: totalLapakWeight,
         status_approval: "menunggu_double_cek",
         potongan_sampah: parseFloat(potongan_sampah) || 0,

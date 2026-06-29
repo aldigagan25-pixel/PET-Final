@@ -8,6 +8,7 @@ import TopLapakAnalytics from "@/components/features/TopLapakAnalytics"
 import SusutLebihAnalytics from "@/components/features/SusutLebihAnalytics"
 import ExpenseAnalytics from "@/components/features/ExpenseAnalytics"
 import DpSummaryAnalytics from "@/components/features/DpSummaryAnalytics"
+import AmbilKirimAnalytics from "@/components/features/AmbilKirimAnalytics"
 import { redirect } from "next/navigation"
 import PendingTerminAlerts from "@/components/features/PendingTerminAlerts"
 import MonthYearFilter from "@/components/features/MonthYearFilter"
@@ -428,6 +429,29 @@ export default async function ManagerDashboard({
   const dpSummaryData = Object.values(dpSummaryMap).sort((a, b) => b.sisaDp - a.sisaDp)
 
   // ──────────────────────────────────────────
+  // 12. Rekap Ambil / Kirim per Warehouse (selected month)
+  // ──────────────────────────────────────────
+  const ambilKirimPerWarehouse = warehouses.map(w => {
+    const wPurchases = monthlyPurchases.filter(p => p.warehouseId === w.id)
+    const jumlahAmbil = wPurchases.filter(p => (p as any).jenis_pengambilan !== "KIRIM").length
+    const jumlahKirim = wPurchases.filter(p => (p as any).jenis_pengambilan === "KIRIM").length
+    return {
+      warehouseId: w.id,
+      warehouseName: w.nama,
+      jumlahAmbil,
+      jumlahKirim,
+      total: wPurchases.length,
+    }
+  }).filter(w => w.total > 0)
+
+  const ambilKirimSummary = {
+    totalAmbil: ambilKirimPerWarehouse.reduce((s, w) => s + w.jumlahAmbil, 0),
+    totalKirim: ambilKirimPerWarehouse.reduce((s, w) => s + w.jumlahKirim, 0),
+    total: monthlyPurchases.length,
+    perWarehouse: ambilKirimPerWarehouse,
+  }
+
+  // ──────────────────────────────────────────
   // 9. SKU Average Prices by Spec (Gabyuk / Grading) per Warehouse / Collection Center
   // ──────────────────────────────────────────
   const skuPricesMap: Record<string, {
@@ -688,6 +712,9 @@ export default async function ManagerDashboard({
         dpData={dpSummaryData}
         warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
       />
+
+      {/* Rekap Ambil / Kirim Barang */}
+      <AmbilKirimAnalytics data={ambilKirimSummary} />
 
       {/* Recent Activities */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

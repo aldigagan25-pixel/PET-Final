@@ -22,6 +22,7 @@ interface NotaData {
   items: Item[]
   tanggal: string
   nomorDraft: string
+  jenisAmbil?: string
   potonganSampah: number
   beratPotonganSampah: number
   hargaPotonganSampah: number
@@ -41,6 +42,7 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
   const [searchQuery, setSearchQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [metodeBayar, setMetodeBayar] = useState("TIMBANGAN_GUDANG")
+  const [jenisAmbil, setJenisAmbil] = useState<"AMBIL" | "KIRIM">("AMBIL")
   const [items, setItems] = useState<Item[]>([{ sku_name: "", spec: "", berat_estimasi: 0, harga_per_kg: 0 }])
 
   const filteredSuppliers = suppliers.filter(s =>
@@ -80,6 +82,7 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
       const payload = {
         supplierId,
         metode_pembayaran_terpilih: metodeBayar,
+        jenis_pengambilan: jenisAmbil,
         items,
         potongan_sampah: potonganSampah,
         berat_potongan_sampah: beratPotonganSampah,
@@ -117,6 +120,7 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
         items,
         tanggal: new Date().toLocaleDateString("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }),
         nomorDraft: saved.id?.slice(0, 8).toUpperCase() || "DRAFT",
+        jenisAmbil,
         potonganSampah,
         beratPotonganSampah,
         hargaPotonganSampah,
@@ -134,6 +138,7 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
       // Reset form
       setSupplierId("")
       setSearchQuery("")
+      setJenisAmbil("AMBIL")
       setItems([{ sku_name: "", spec: "", berat_estimasi: 0, harga_per_kg: 0 }])
       setBeratPotonganSampah(0)
       setHargaPotonganSampah(0)
@@ -242,6 +247,39 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
               <option value="TIMBANGAN_GUDANG">Timbangan Gudang</option>
               <option value="TIMBANGAN_LAPAK">Timbangan Lapak</option>
             </select>
+          </div>
+        </div>
+
+        {/* Jenis Pengambilan */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">Jenis Pengambilan Barang</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setJenisAmbil("AMBIL")}
+              className={`flex flex-col items-center justify-center gap-2 py-4 px-4 rounded-2xl border-2 transition-all font-semibold text-sm ${
+                jenisAmbil === "AMBIL"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md shadow-emerald-100"
+                  : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">📦</span>
+              <span>Diambil</span>
+              <span className="text-[10px] font-normal text-current opacity-70">Tim gudang ke lapak</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setJenisAmbil("KIRIM")}
+              className={`flex flex-col items-center justify-center gap-2 py-4 px-4 rounded-2xl border-2 transition-all font-semibold text-sm ${
+                jenisAmbil === "KIRIM"
+                  ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md shadow-blue-100"
+                  : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">🚛</span>
+              <span>Dikirim</span>
+              <span className="text-[10px] font-normal text-current opacity-70">Lapak kirim ke gudang</span>
+            </button>
           </div>
         </div>
 

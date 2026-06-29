@@ -18,6 +18,7 @@ interface NotaData {
   items: NotaItem[]
   tanggal: string
   nomorDraft: string
+  jenisAmbil?: string
   potonganSampah: number
   beratPotonganSampah: number
   hargaPotonganSampah: number
@@ -72,6 +73,22 @@ function NotaContent({ data }: { data: NotaData }) {
           <tr>
             <td style={{ color: "#64748b", paddingBottom: 3 }}>Supplier / Lapak</td>
             <td style={{ fontWeight: 700, textAlign: "right", color: "#1e293b" }}>{data.supplierNama}</td>
+          </tr>
+          <tr>
+            <td style={{ color: "#64748b", paddingBottom: 3 }}>Jenis Pengambilan</td>
+            <td style={{ fontWeight: 700, textAlign: "right" }}>
+              <span style={{
+                display: "inline-block",
+                padding: "2px 10px",
+                borderRadius: 20,
+                fontSize: 10,
+                fontWeight: 800,
+                backgroundColor: data.jenisAmbil === "KIRIM" ? "#dbeafe" : "#d1fae5",
+                color: data.jenisAmbil === "KIRIM" ? "#1d4ed8" : "#065f46",
+              }}>
+                {data.jenisAmbil === "KIRIM" ? "🚛 Dikirim Lapak" : "📦 Diambil Gudang"}
+              </span>
+            </td>
           </tr>
         </tbody>
       </table>

@@ -108,6 +108,7 @@ model Purchase {
   status_pelunasan           String?   @default("LUNAS") // "BELUM_LUNAS" | "LUNAS"
   
   status_approval            String    // 'menunggu_double_cek', 'menunggu_approval_harga', 'approved', 'sudah_transfer', 'rejected', 'dibatalkan'
+  jenis_pengambilan          String?   @default("AMBIL") // 'AMBIL' | 'KIRIM'
   rejection_reason           String?
   bukti_transfer             String?
   tanggal_transfer           DateTime?
