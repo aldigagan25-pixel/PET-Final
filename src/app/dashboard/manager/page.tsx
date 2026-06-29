@@ -8,7 +8,6 @@ import TopLapakAnalytics from "@/components/features/TopLapakAnalytics"
 import SusutLebihAnalytics from "@/components/features/SusutLebihAnalytics"
 import ExpenseAnalytics from "@/components/features/ExpenseAnalytics"
 import DpSummaryAnalytics from "@/components/features/DpSummaryAnalytics"
-import AmbilKirimAnalytics from "@/components/features/AmbilKirimAnalytics"
 import { redirect } from "next/navigation"
 import PendingTerminAlerts from "@/components/features/PendingTerminAlerts"
 import MonthYearFilter from "@/components/features/MonthYearFilter"
@@ -686,7 +685,12 @@ export default async function ManagerDashboard({
       <ExpenseAnalytics globalExpenses={globalExpenses} warehouseExpenses={warehouseExpenses} />
 
       {/* Target vs Realisasi Charts */}
-      <ManagerAnalytics warehouses={warehouses} dataMap={dataMap} skuPricesMap={skuPricesMap} />
+      <ManagerAnalytics
+        warehouses={warehouses}
+        dataMap={dataMap}
+        skuPricesMap={skuPricesMap}
+        ambilKirimData={ambilKirimPerWarehouse}
+      />
 
 
       {/* Calendar + Top Lapak (side by side on large screens) */}
@@ -712,9 +716,6 @@ export default async function ManagerDashboard({
         dpData={dpSummaryData}
         warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
       />
-
-      {/* Rekap Ambil / Kirim Barang */}
-      <AmbilKirimAnalytics data={ambilKirimSummary} />
 
       {/* Recent Activities */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

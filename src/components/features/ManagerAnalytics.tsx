@@ -136,11 +136,18 @@ const CustomTooltip = ({ active, payload, label, unit }: any) => {
 export default function ManagerAnalytics({
   warehouses,
   dataMap,
-  skuPricesMap
+  skuPricesMap,
+  ambilKirimData = []
 }: {
   warehouses: any[]
   dataMap: Record<string, WarehouseData>
   skuPricesMap?: Record<string, SkuPriceData[]>
+  ambilKirimData?: {
+    warehouseId: string
+    warehouseName: string
+    jumlahAmbil: number
+    jumlahKirim: number
+  }[]
 }) {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all")
   const [chartMode, setChartMode] = useState<ChartMode>("bulanan")
@@ -518,6 +525,130 @@ export default function ManagerAnalytics({
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Rekap Ambil / Kirim Barang */}
+      {ambilKirimData.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-200 shrink-0">
+              <svg xmlns="http://www.w3.org/2500/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+                <rect width="13" height="13" x="9" y="9" rx="2" ry="2"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Rekap Ambil / Kirim Barang ({selectedWarehouseId === "all" ? "Semua Gudang" : (dataMap[selectedWarehouseId]?.nama || "Gudang")})</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Jumlah transaksi per jenis pengambilan bulan ini</p>
+            </div>
+          </div>
+
+          {/* Big Cards */}
+          {(() => {
+            const activeAmbilKirim = selectedWarehouseId === "all"
+              ? {
+                  jumlahAmbil: ambilKirimData.reduce((s, w) => s + w.jumlahAmbil, 0),
+                  jumlahKirim: ambilKirimData.reduce((s, w) => s + w.jumlahKirim, 0),
+                  total: ambilKirimData.reduce((s, w) => s + w.jumlahAmbil + w.jumlahKirim, 0)
+                }
+              : (() => {
+                  const found = ambilKirimData.find(w => w.warehouseId === selectedWarehouseId)
+                  return found
+                    ? { jumlahAmbil: found.jumlahAmbil, jumlahKirim: found.jumlahKirim, total: found.jumlahAmbil + found.jumlahKirim }
+                    : { jumlahAmbil: 0, jumlahKirim: 0, total: 0 }
+                })()
+
+            const activeAmbilPct = activeAmbilKirim.total > 0 ? (activeAmbilKirim.jumlahAmbil / activeAmbilKirim.total) * 100 : 0
+            const activeKirimPct = activeAmbilKirim.total > 0 ? (activeAmbilKirim.jumlahKirim / activeAmbilKirim.total) * 100 : 0
+
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  {/* AMBIL */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Diambil</span>
+                    </div>
+                    <div className="text-3xl font-extrabold text-emerald-700">{activeAmbilKirim.jumlahAmbil}</div>
+                    <div className="text-xs text-emerald-600 mt-1">transaksi</div>
+                    <div className="mt-3 w-full bg-emerald-100 rounded-full h-2">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${activeAmbilPct}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">{activeAmbilPct.toFixed(1)}% dari total</div>
+                  </div>
+
+                  {/* KIRIM */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Dikirim</span>
+                    </div>
+                    <div className="text-3xl font-extrabold text-blue-700">{activeAmbilKirim.jumlahKirim}</div>
+                    <div className="text-xs text-blue-600 mt-1">transaksi</div>
+                    <div className="mt-3 w-full bg-blue-100 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${activeKirimPct}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-blue-600 font-semibold mt-1">{activeKirimPct.toFixed(1)}% dari total</div>
+                  </div>
+                </div>
+
+                {/* Tabel per Gudang (only when "all" selected) */}
+                {selectedWarehouseId === "all" && (
+                  <div className="border border-slate-100 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Gudang</th>
+                          <th className="text-center px-3 py-2.5 font-bold text-emerald-600 uppercase tracking-wider">Ambil</th>
+                          <th className="text-center px-3 py-2.5 font-bold text-blue-600 uppercase tracking-wider">Kirim</th>
+                          <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {ambilKirimData.map((w, i) => (
+                          <tr key={i} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-slate-700">{w.warehouseName}</td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold">
+                                {w.jumlahAmbil}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700 font-bold">
+                                {w.jumlahKirim}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-center font-semibold text-slate-600">{w.jumlahAmbil + w.jumlahKirim}</td>
+                          </tr>
+                        ))}
+                        {/* Total Row */}
+                        <tr className="bg-slate-50 border-t border-slate-200">
+                          <td className="px-4 py-3 font-extrabold text-slate-800">TOTAL</td>
+                          <td className="px-3 py-3 text-center">
+                            <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-emerald-200 text-emerald-800 font-extrabold">
+                              {activeAmbilKirim.jumlahAmbil}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-blue-200 text-blue-800 font-extrabold">
+                              {activeAmbilKirim.jumlahKirim}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-center font-extrabold text-slate-800">{activeAmbilKirim.total}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
 
       {/* SKU Price Table */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
