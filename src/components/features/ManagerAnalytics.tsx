@@ -147,6 +147,8 @@ export default function ManagerAnalytics({
     warehouseName: string
     jumlahAmbil: number
     jumlahKirim: number
+    beratAmbil?: number
+    beratKirim?: number
   }[]
 }) {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all")
@@ -548,17 +550,30 @@ export default function ManagerAnalytics({
               ? {
                   jumlahAmbil: ambilKirimData.reduce((s, w) => s + w.jumlahAmbil, 0),
                   jumlahKirim: ambilKirimData.reduce((s, w) => s + w.jumlahKirim, 0),
-                  total: ambilKirimData.reduce((s, w) => s + w.jumlahAmbil + w.jumlahKirim, 0)
+                  beratAmbil: ambilKirimData.reduce((s, w) => s + (w.beratAmbil || 0), 0),
+                  beratKirim: ambilKirimData.reduce((s, w) => s + (w.beratKirim || 0), 0),
+                  total: ambilKirimData.reduce((s, w) => s + w.jumlahAmbil + w.jumlahKirim, 0),
+                  totalBerat: ambilKirimData.reduce((s, w) => s + (w.beratAmbil || 0) + (w.beratKirim || 0), 0)
                 }
               : (() => {
                   const found = ambilKirimData.find(w => w.warehouseId === selectedWarehouseId)
                   return found
-                    ? { jumlahAmbil: found.jumlahAmbil, jumlahKirim: found.jumlahKirim, total: found.jumlahAmbil + found.jumlahKirim }
-                    : { jumlahAmbil: 0, jumlahKirim: 0, total: 0 }
+                    ? {
+                        jumlahAmbil: found.jumlahAmbil,
+                        jumlahKirim: found.jumlahKirim,
+                        beratAmbil: found.beratAmbil || 0,
+                        beratKirim: found.beratKirim || 0,
+                        total: found.jumlahAmbil + found.jumlahKirim,
+                        totalBerat: (found.beratAmbil || 0) + (found.beratKirim || 0)
+                      }
+                    : { jumlahAmbil: 0, jumlahKirim: 0, beratAmbil: 0, beratKirim: 0, total: 0, totalBerat: 0 }
                 })()
 
             const activeAmbilPct = activeAmbilKirim.total > 0 ? (activeAmbilKirim.jumlahAmbil / activeAmbilKirim.total) * 100 : 0
             const activeKirimPct = activeAmbilKirim.total > 0 ? (activeAmbilKirim.jumlahKirim / activeAmbilKirim.total) * 100 : 0
+
+            const activeAmbilWeightPct = activeAmbilKirim.totalBerat > 0 ? (activeAmbilKirim.beratAmbil / activeAmbilKirim.totalBerat) * 100 : 0
+            const activeKirimWeightPct = activeAmbilKirim.totalBerat > 0 ? (activeAmbilKirim.beratKirim / activeAmbilKirim.totalBerat) * 100 : 0
 
             return (
               <>
@@ -568,15 +583,18 @@ export default function ManagerAnalytics({
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Diambil</span>
                     </div>
-                    <div className="text-3xl font-extrabold text-emerald-700">{activeAmbilKirim.jumlahAmbil}</div>
-                    <div className="text-xs text-emerald-600 mt-1">transaksi</div>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                      <span className="text-3xl font-extrabold text-emerald-700">{fmtTon(activeAmbilKirim.beratAmbil)}</span>
+                      <span className="text-xs text-emerald-600 font-semibold">({fmtKg(activeAmbilKirim.beratAmbil)})</span>
+                    </div>
+                    <div className="text-xs text-emerald-600 mt-1 font-medium">{activeAmbilKirim.jumlahAmbil} transaksi</div>
                     <div className="mt-3 w-full bg-emerald-100 rounded-full h-2">
                       <div
                         className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${activeAmbilPct}%` }}
+                        style={{ width: `${activeAmbilWeightPct}%` }}
                       />
                     </div>
-                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">{activeAmbilPct.toFixed(1)}% dari total</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-1">{activeAmbilWeightPct.toFixed(1)}% dari total volume</div>
                   </div>
 
                   {/* KIRIM */}
@@ -584,15 +602,18 @@ export default function ManagerAnalytics({
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Dikirim</span>
                     </div>
-                    <div className="text-3xl font-extrabold text-blue-700">{activeAmbilKirim.jumlahKirim}</div>
-                    <div className="text-xs text-blue-600 mt-1">transaksi</div>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+                      <span className="text-3xl font-extrabold text-blue-700">{fmtTon(activeAmbilKirim.beratKirim)}</span>
+                      <span className="text-xs text-blue-600 font-semibold">({fmtKg(activeAmbilKirim.beratKirim)})</span>
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1 font-medium">{activeAmbilKirim.jumlahKirim} transaksi</div>
                     <div className="mt-3 w-full bg-blue-100 rounded-full h-2">
                       <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${activeKirimPct}%` }}
+                        style={{ width: `${activeKirimWeightPct}%` }}
                       />
                     </div>
-                    <div className="text-[10px] text-blue-600 font-semibold mt-1">{activeKirimPct.toFixed(1)}% dari total</div>
+                    <div className="text-[10px] text-blue-600 font-semibold mt-1">{activeKirimWeightPct.toFixed(1)}% dari total volume</div>
                   </div>
                 </div>
 
@@ -602,10 +623,16 @@ export default function ManagerAnalytics({
                     <table className="w-full text-xs">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Gudang</th>
-                          <th className="text-center px-3 py-2.5 font-bold text-emerald-600 uppercase tracking-wider">Ambil</th>
-                          <th className="text-center px-3 py-2.5 font-bold text-blue-600 uppercase tracking-wider">Kirim</th>
-                          <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Total</th>
+                          <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider" rowSpan={2}>Gudang</th>
+                          <th className="text-center px-3 py-1 font-bold text-emerald-600 uppercase tracking-wider border-b border-slate-200" colSpan={2}>Ambil</th>
+                          <th className="text-center px-3 py-1 font-bold text-blue-600 uppercase tracking-wider border-b border-slate-200" colSpan={2}>Kirim</th>
+                          <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider" rowSpan={2}>Total Transaksi</th>
+                        </tr>
+                        <tr className="bg-slate-50/50">
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Trans.</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Volume</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Trans.</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Volume</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -613,14 +640,20 @@ export default function ManagerAnalytics({
                           <tr key={i} className="hover:bg-slate-50 transition-colors">
                             <td className="px-4 py-3 font-semibold text-slate-700">{w.warehouseName}</td>
                             <td className="px-3 py-3 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold">
+                              <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 font-bold">
                                 {w.jumlahAmbil}
                               </span>
                             </td>
+                            <td className="px-3 py-3 text-center font-medium text-slate-600">
+                              {fmtTon(w.beratAmbil || 0)}
+                            </td>
                             <td className="px-3 py-3 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700 font-bold">
+                              <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-lg bg-blue-100 text-blue-700 font-bold">
                                 {w.jumlahKirim}
                               </span>
+                            </td>
+                            <td className="px-3 py-3 text-center font-medium text-slate-600">
+                              {fmtTon(w.beratKirim || 0)}
                             </td>
                             <td className="px-3 py-3 text-center font-semibold text-slate-600">{w.jumlahAmbil + w.jumlahKirim}</td>
                           </tr>
@@ -629,14 +662,20 @@ export default function ManagerAnalytics({
                         <tr className="bg-slate-50 border-t border-slate-200">
                           <td className="px-4 py-3 font-extrabold text-slate-800">TOTAL</td>
                           <td className="px-3 py-3 text-center">
-                            <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-emerald-200 text-emerald-800 font-extrabold">
+                            <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-lg bg-emerald-200 text-emerald-800 font-extrabold">
                               {activeAmbilKirim.jumlahAmbil}
                             </span>
                           </td>
+                          <td className="px-3 py-3 text-center font-extrabold text-emerald-800">
+                            {fmtTon(activeAmbilKirim.beratAmbil)}
+                          </td>
                           <td className="px-3 py-3 text-center">
-                            <span className="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-lg bg-blue-200 text-blue-800 font-extrabold">
+                            <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded-lg bg-blue-200 text-blue-800 font-extrabold">
                               {activeAmbilKirim.jumlahKirim}
                             </span>
+                          </td>
+                          <td className="px-3 py-3 text-center font-extrabold text-blue-800">
+                            {fmtTon(activeAmbilKirim.beratKirim)}
                           </td>
                           <td className="px-3 py-3 text-center font-extrabold text-slate-800">{activeAmbilKirim.total}</td>
                         </tr>

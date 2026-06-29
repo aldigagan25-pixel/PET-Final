@@ -427,18 +427,29 @@ export default async function ManagerDashboard({
 
   const dpSummaryData = Object.values(dpSummaryMap).sort((a, b) => b.sisaDp - a.sisaDp)
 
-  // ──────────────────────────────────────────
-  // 12. Rekap Ambil / Kirim per Warehouse (selected month)
-  // ──────────────────────────────────────────
   const ambilKirimPerWarehouse = warehouses.map(w => {
     const wPurchases = monthlyPurchases.filter(p => p.warehouseId === w.id)
-    const jumlahAmbil = wPurchases.filter(p => (p as any).jenis_pengambilan !== "KIRIM").length
-    const jumlahKirim = wPurchases.filter(p => (p as any).jenis_pengambilan === "KIRIM").length
+    
+    const ambilPurchases = wPurchases.filter(p => (p as any).jenis_pengambilan !== "KIRIM")
+    const kirimPurchases = wPurchases.filter(p => (p as any).jenis_pengambilan === "KIRIM")
+
+    const jumlahAmbil = ambilPurchases.length
+    const jumlahKirim = kirimPurchases.length
+
+    const beratAmbil = ambilPurchases.reduce((sum, p) => 
+      sum + p.items.reduce((itemSum, item) => itemSum + (item.berat_final_item || 0), 0), 0
+    )
+    const beratKirim = kirimPurchases.reduce((sum, p) => 
+      sum + p.items.reduce((itemSum, item) => itemSum + (item.berat_final_item || 0), 0), 0
+    )
+
     return {
       warehouseId: w.id,
       warehouseName: w.nama,
       jumlahAmbil,
       jumlahKirim,
+      beratAmbil,
+      beratKirim,
       total: wPurchases.length,
     }
   }).filter(w => w.total > 0)
@@ -446,6 +457,8 @@ export default async function ManagerDashboard({
   const ambilKirimSummary = {
     totalAmbil: ambilKirimPerWarehouse.reduce((s, w) => s + w.jumlahAmbil, 0),
     totalKirim: ambilKirimPerWarehouse.reduce((s, w) => s + w.jumlahKirim, 0),
+    totalBeratAmbil: ambilKirimPerWarehouse.reduce((s, w) => s + w.beratAmbil, 0),
+    totalBeratKirim: ambilKirimPerWarehouse.reduce((s, w) => s + w.beratKirim, 0),
     total: monthlyPurchases.length,
     perWarehouse: ambilKirimPerWarehouse,
   }
