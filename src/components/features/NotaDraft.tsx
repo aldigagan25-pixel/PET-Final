@@ -86,7 +86,7 @@ function NotaContent({ data }: { data: NotaData }) {
                 backgroundColor: data.jenisAmbil === "KIRIM" ? "#dbeafe" : "#d1fae5",
                 color: data.jenisAmbil === "KIRIM" ? "#1d4ed8" : "#065f46",
               }}>
-                {data.jenisAmbil === "KIRIM" ? "🚛 Dikirim Lapak" : "📦 Diambil Gudang"}
+                {data.jenisAmbil === "KIRIM" ? "Dikirim Lapak" : "Diambil Gudang"}
               </span>
             </td>
           </tr>

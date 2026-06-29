@@ -263,7 +263,6 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
                   : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
               }`}
             >
-              <span className="text-2xl">📦</span>
               <span>Diambil</span>
               <span className="text-[10px] font-normal text-current opacity-70">Tim gudang ke lapak</span>
             </button>
@@ -276,7 +275,6 @@ export default function PurchaseForm({ suppliers, namaGudang }: { suppliers: any
                   : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
               }`}
             >
-              <span className="text-2xl">🚛</span>
               <span>Dikirim</span>
               <span className="text-[10px] font-normal text-current opacity-70">Lapak kirim ke gudang</span>
             </button>

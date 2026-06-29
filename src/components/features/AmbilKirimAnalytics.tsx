@@ -78,7 +78,6 @@ export default function AmbilKirimAnalytics({ data }: { data: AmbilKirimSummary 
         {/* AMBIL */}
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">📦</span>
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Diambil</span>
           </div>
           <div className="text-3xl font-extrabold text-emerald-700">{activeData.jumlahAmbil}</div>
@@ -95,7 +94,6 @@ export default function AmbilKirimAnalytics({ data }: { data: AmbilKirimSummary 
         {/* KIRIM */}
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">🚛</span>
             <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Dikirim</span>
           </div>
           <div className="text-3xl font-extrabold text-blue-700">{activeData.jumlahKirim}</div>
@@ -117,8 +115,8 @@ export default function AmbilKirimAnalytics({ data }: { data: AmbilKirimSummary 
             <thead className="bg-slate-50">
               <tr>
                 <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Gudang</th>
-                <th className="text-center px-3 py-2.5 font-bold text-emerald-600 uppercase tracking-wider">📦 Ambil</th>
-                <th className="text-center px-3 py-2.5 font-bold text-blue-600 uppercase tracking-wider">🚛 Kirim</th>
+                <th className="text-center px-3 py-2.5 font-bold text-emerald-600 uppercase tracking-wider">Ambil</th>
+                <th className="text-center px-3 py-2.5 font-bold text-blue-600 uppercase tracking-wider">Kirim</th>
                 <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider">Total</th>
               </tr>
             </thead>
@@ -161,7 +159,7 @@ export default function AmbilKirimAnalytics({ data }: { data: AmbilKirimSummary 
 
       {data.total === 0 && (
         <div className="text-center py-8 text-slate-400 text-sm">
-          <div className="text-3xl mb-2">📊</div>
+          <div className="text-3xl mb-2">—</div>
           Belum ada data pengambilan barang bulan ini
         </div>
       )}
