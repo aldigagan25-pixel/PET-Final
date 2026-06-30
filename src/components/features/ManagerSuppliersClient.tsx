@@ -555,7 +555,7 @@ export default function ManagerSuppliersClient({
               Performa dinilai secara matematis menggunakan bobot: <strong>Kuantitas Volume (40%)</strong>, <strong>Kualitas / Penyusutan (40%)</strong>, dan <strong>Harga (20%)</strong>.
             </p>
           </div>
-          <div className="flex gap-3 text-[10px] font-bold">
+          <div className="flex flex-wrap gap-3 text-[10px] font-bold">
             <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-100">Grade A (≥ 85): Prima</span>
             <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Grade B (60-84): Cukup</span>
             <span className="bg-rose-50 text-rose-700 px-2 py-1 rounded border border-rose-100">Grade C (&lt; 60): Evaluasi</span>

@@ -151,18 +151,87 @@ export default function ManagerHistoryClient({
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* ── Mobile Card List (< md) ── */}
+      <div className="block md:hidden space-y-3">
+        {filteredPurchases.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-slate-400 border border-slate-100 shadow-sm">
+            Tidak ada transaksi yang cocok.
+          </div>
+        ) : (
+          filteredPurchases.map((p) => {
+            const totalBerat = p.items.reduce((s, i) => s + (i.berat_final_item || 0), 0)
+            const totalNilai = p.total_dibayar ?? p.total_nilai_setelah_retur ?? p.total_nilai_sebelum_retur ?? 0
+            const s = statusMap[p.status_approval] ?? { label: p.status_approval, cls: 'bg-slate-50 text-slate-600 border-slate-200' }
+            return (
+              <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-800 truncate">{p.supplier.nama}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{p.warehouse.nama}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border shrink-0 ${s.cls}`}>{s.label}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-400">Berat</p>
+                    <p className="font-semibold text-slate-700">{totalBerat.toFixed(1)} KG</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Total Nilai</p>
+                    <p className="font-bold text-slate-800">{formatRp(totalNilai)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Tanggal</p>
+                    <p className="text-xs font-medium text-slate-600">{new Date(p.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Staff</p>
+                    <p className="text-xs font-medium text-slate-600 truncate">{p.staff.nama}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {p.status_approval === "menunggu_approval_harga" && (
+                    <Link href={`/dashboard/manager/approval-harga/${p.id}`} className="flex-1">
+                      <button className="w-full bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 px-3 py-1.5 rounded-lg text-xs font-bold">Approval Harga</button>
+                    </Link>
+                  )}
+                  {(p.status_approval === "approved" || p.status_approval === "sudah_transfer") && (
+                    <Link href={`/nota/${p.id}`} target="_blank" className="flex-1">
+                      <button className="w-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-semibold">Lihat Nota</button>
+                    </Link>
+                  )}
+                  <Link href={`/dashboard/manager/purchases/${p.id}`} className="flex-1">
+                    <button className="w-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold">Detail</button>
+                  </Link>
+                  <Link href={`/dashboard/manager/edit/${p.id}`} className="flex-1">
+                    <button className="w-full bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 px-3 py-1.5 rounded-lg text-xs font-bold">Edit</button>
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    disabled={deletingId === p.id}
+                    className="flex-1 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+                  >
+                    {deletingId === p.id ? "..." : "Hapus"}
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Desktop Table (≥ md) ── */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+          <table className="w-full text-left text-sm text-slate-600 min-w-[700px]">
             <thead className="bg-slate-50/80 text-xs uppercase text-slate-500 font-semibold border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4">Gudang / Tanggal</th>
-                <th className="px-6 py-4">Lapak / Supplier</th>
-                <th className="px-6 py-4">Barang (Total Berat)</th>
-                <th className="px-6 py-4">Total Nilai</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-center">Aksi</th>
+                <th className="px-5 py-4 whitespace-nowrap">Gudang / Tanggal</th>
+                <th className="px-5 py-4 whitespace-nowrap">Lapak / Supplier</th>
+                <th className="px-5 py-4 whitespace-nowrap">Berat</th>
+                <th className="px-5 py-4 whitespace-nowrap">Total Nilai</th>
+                <th className="px-5 py-4 whitespace-nowrap">Status</th>
+                <th className="px-5 py-4 text-center whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -180,82 +249,50 @@ export default function ManagerHistoryClient({
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/30 transition-colors">
-                      {/* Warehouse & Tanggal */}
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">{p.warehouse.nama}</div>
+                      <td className="px-5 py-4">
+                        <div className="font-semibold text-slate-900 whitespace-nowrap">{p.warehouse.nama}</div>
                         <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{new Date(p.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })}</span>
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span className="whitespace-nowrap">{new Date(p.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })}</span>
                         </div>
                       </td>
-
-                      {/* Supplier & Staff */}
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4">
                         <div className="font-bold text-slate-800">{p.supplier.nama}</div>
                         <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-400" />
+                          <User className="w-3 h-3" />
                           <span>Staff: {p.staff.nama}</span>
                         </div>
                       </td>
-
-                      {/* Items & Weight */}
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-800">{totalBerat.toFixed(1)} KG</div>
-                        <div className="text-xs text-slate-400 mt-0.5 font-mono">
-                          {p.items.length} sku · {p.nomor_nota || `#${p.id.split("-")[0]}`}
-                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5 font-mono">{p.items.length} sku</div>
                       </td>
-
-                      {/* Total Nilai */}
-                      <td className="px-6 py-4 font-mono font-bold text-slate-800">
-                        {formatRp(totalNilai)}
+                      <td className="px-5 py-4 font-mono font-bold text-slate-800 whitespace-nowrap">{formatRp(totalNilai)}</td>
+                      <td className="px-5 py-4">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border inline-block whitespace-nowrap ${s.cls}`}>{s.label}</span>
                       </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${s.cls}`}>
-                          {s.label}
-                        </span>
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          {p.status_approval === "menunggu_approval_harga" ? (
+                      <td className="px-5 py-4 text-center">
+                        <div className="flex flex-col items-center gap-1.5">
+                          {p.status_approval === "menunggu_approval_harga" && (
                             <Link href={`/dashboard/manager/approval-harga/${p.id}`} className="w-full">
-                              <button className="bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 w-full">
-                                Approval Harga <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
+                              <button className="bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 px-3 py-1.5 rounded-lg text-xs font-bold w-full whitespace-nowrap">Approval Harga</button>
                             </Link>
-                          ) : p.status_approval === "approved" || p.status_approval === "sudah_transfer" ? (
+                          )}
+                          {(p.status_approval === "approved" || p.status_approval === "sudah_transfer") && (
                             <Link href={`/nota/${p.id}`} target="_blank" className="w-full">
-                              <button className="bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all w-full">
-                                Lihat Nota
-                              </button>
+                              <button className="bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-semibold w-full">Lihat Nota</button>
                             </Link>
-                          ) : null}
-
-                          {/* Detail button */}
+                          )}
                           <Link href={`/dashboard/manager/purchases/${p.id}`} className="w-full">
-                            <button className="bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 w-full">
-                              Detail Transaksi
-                            </button>
+                            <button className="bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold w-full whitespace-nowrap">Detail</button>
                           </Link>
-
-                          {/* Edit button */}
                           <Link href={`/dashboard/manager/edit/${p.id}`} className="w-full">
-                            <button className="bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 w-full">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
-                              Edit
-                            </button>
+                            <button className="bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 px-3 py-1.5 rounded-lg text-xs font-bold w-full">Edit</button>
                           </Link>
-                          {/* Delete button */}
-                          <button 
+                          <button
                             onClick={() => handleDelete(p.id)}
                             disabled={deletingId === p.id}
-                            className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 mx-auto w-full disabled:opacity-50"
+                            className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold w-full disabled:opacity-50"
                           >
                             {deletingId === p.id ? "Menghapus..." : "Hapus"}
                           </button>

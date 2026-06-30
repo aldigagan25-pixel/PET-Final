@@ -167,7 +167,7 @@ export default function DoubleCheckForm({ purchase, availableDp }: { purchase: a
                   <option value={50}>Termin 50% + 50% Pelunasan</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
                     Timbangan Lapak (KG)
@@ -589,7 +589,7 @@ export default function DoubleCheckForm({ purchase, availableDp }: { purchase: a
         )}
       </div>
 
-      <div className="pt-6 border-t border-slate-200 flex justify-end gap-4">
+      <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-end gap-3">
         <button type="button" onClick={() => router.back()} className="px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
           Batal
         </button>

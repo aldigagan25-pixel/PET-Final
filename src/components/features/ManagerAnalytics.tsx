@@ -620,19 +620,20 @@ export default function ManagerAnalytics({
                 {/* Tabel per Gudang (only when "all" selected) */}
                 {selectedWarehouseId === "all" && (
                   <div className="border border-slate-100 rounded-xl overflow-hidden">
-                    <table className="w-full text-xs">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[550px] text-xs">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider" rowSpan={2}>Gudang</th>
-                          <th className="text-center px-3 py-1 font-bold text-emerald-600 uppercase tracking-wider border-b border-slate-200" colSpan={2}>Ambil</th>
-                          <th className="text-center px-3 py-1 font-bold text-blue-600 uppercase tracking-wider border-b border-slate-200" colSpan={2}>Kirim</th>
-                          <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider" rowSpan={2}>Total Transaksi</th>
+                          <th className="text-left px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" rowSpan={2}>Gudang</th>
+                          <th className="text-center px-3 py-1 font-bold text-emerald-600 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap" colSpan={2}>Ambil</th>
+                          <th className="text-center px-3 py-1 font-bold text-blue-600 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap" colSpan={2}>Kirim</th>
+                          <th className="text-center px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" rowSpan={2}>Total Transaksi</th>
                         </tr>
                         <tr className="bg-slate-50/50">
-                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Trans.</th>
-                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Volume</th>
-                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Trans.</th>
-                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase">Volume</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase whitespace-nowrap">Trans.</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase whitespace-nowrap">Volume</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase whitespace-nowrap">Trans.</th>
+                          <th className="text-center px-2 py-1.5 font-semibold text-[10px] text-slate-500 uppercase whitespace-nowrap">Volume</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -681,6 +682,7 @@ export default function ManagerAnalytics({
                         </tr>
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </>

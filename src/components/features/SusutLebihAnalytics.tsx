@@ -315,13 +315,13 @@ export default function SusutLebihAnalytics({ lapakData, summary, warehouseNames
 
                       {/* Sku Breakdown */}
                       <div className="overflow-x-auto rounded-xl border border-slate-100">
-                        <table className="w-full text-left text-xs text-slate-600">
+                        <table className="w-full min-w-[400px] text-left text-xs text-slate-600">
                           <thead>
                             <tr className="bg-slate-100 font-semibold text-slate-500">
-                              <th className="px-4 py-2">Nama SKU</th>
-                              <th className="px-4 py-2 text-right">Timbang Lapak</th>
-                              <th className="px-4 py-2 text-right">Timbang Gudang</th>
-                              <th className="px-4 py-2 text-right">Selisih</th>
+                              <th className="px-4 py-2 whitespace-nowrap">Nama SKU</th>
+                              <th className="px-4 py-2 text-right whitespace-nowrap">Timbang Lapak</th>
+                              <th className="px-4 py-2 text-right whitespace-nowrap">Timbang Gudang</th>
+                              <th className="px-4 py-2 text-right whitespace-nowrap">Selisih</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 bg-white">

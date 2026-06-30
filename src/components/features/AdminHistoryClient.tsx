@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Search, Filter, Calendar, User, Tag, ArrowRight } from "lucide-react"
+import { Search, Filter, User, Tag, ArrowRight } from "lucide-react"
 
 interface PurchaseItem {
   id: string
@@ -53,7 +53,7 @@ export default function AdminHistoryClient({ initialPurchases }: { initialPurcha
 
   // Filter purchases
   const filteredPurchases = initialPurchases.filter(p => {
-    const matchesSearch = 
+    const matchesSearch =
       p.supplier.nama.toLowerCase().includes(search.toLowerCase()) ||
       (p.nomor_nota && p.nomor_nota.toLowerCase().includes(search.toLowerCase())) ||
       p.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -124,18 +124,77 @@ export default function AdminHistoryClient({ initialPurchases }: { initialPurcha
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* ── Mobile Card List (< md) ── */}
+      <div className="block md:hidden space-y-3">
+        {filteredPurchases.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center text-slate-400 border border-slate-100 shadow-sm">
+            Tidak ada transaksi yang cocok.
+          </div>
+        ) : (
+          filteredPurchases.map((p) => {
+            const totalBerat = p.items.reduce((s, i) => s + (i.berat_final_item || 0), 0)
+            const totalNilai = p.total_dibayar ?? p.total_nilai_setelah_retur ?? p.total_nilai_sebelum_retur ?? 0
+            const s = statusMap[p.status_approval] ?? { label: p.status_approval, cls: 'bg-slate-50 text-slate-600 border-slate-200' }
+            return (
+              <div key={p.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-800 truncate">{p.supplier.nama}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{new Date(p.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border shrink-0 ${s.cls}`}>{s.label}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-400">Berat</p>
+                    <p className="font-semibold text-slate-700">{totalBerat.toFixed(1)} KG</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Total Nilai</p>
+                    <p className="font-bold text-slate-800">{formatRp(totalNilai)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">No. Nota</p>
+                    <p className="text-xs font-mono text-slate-600">{p.nomor_nota || `#${p.id.split("-")[0]}`}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Staff</p>
+                    <p className="text-xs font-medium text-slate-600 truncate">{p.staff.nama}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {p.status_approval === "menunggu_double_cek" && (
+                    <Link href={`/dashboard/admin/check/${p.id}`} className="flex-1">
+                      <button className="w-full bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold">Cek</button>
+                    </Link>
+                  )}
+                  {(p.status_approval === "approved" || p.status_approval === "sudah_transfer") && (
+                    <Link href={`/nota/${p.id}`} target="_blank" className="flex-1">
+                      <button className="w-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-semibold">Nota</button>
+                    </Link>
+                  )}
+                  <Link href={`/dashboard/admin/edit/${p.id}`} className="flex-1">
+                    <button className="w-full bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 px-3 py-1.5 rounded-lg text-xs font-bold">Edit</button>
+                  </Link>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Desktop Table (≥ md) ── */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
+          <table className="w-full min-w-[650px] text-left text-sm text-slate-600">
             <thead className="bg-slate-50/80 text-xs uppercase text-slate-500 font-semibold border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4">Tanggal / No. Nota</th>
-                <th className="px-6 py-4">Lapak / Supplier</th>
-                <th className="px-6 py-4">Barang (Total Berat)</th>
-                <th className="px-6 py-4">Total Nilai</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-center">Aksi</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tanggal / No. Nota</th>
+                <th className="px-6 py-4 whitespace-nowrap">Lapak / Supplier</th>
+                <th className="px-6 py-4 whitespace-nowrap">Barang (Total Berat)</th>
+                <th className="px-6 py-4 whitespace-nowrap">Total Nilai</th>
+                <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -153,17 +212,14 @@ export default function AdminHistoryClient({ initialPurchases }: { initialPurcha
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/30 transition-colors">
-                      {/* Tanggal & No Nota */}
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-900">
+                        <div className="font-semibold text-slate-900 whitespace-nowrap">
                           {new Date(p.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium', timeZone: 'Asia/Jakarta' })}
                         </div>
                         <div className="text-xs text-slate-400 mt-1 font-mono">
                           {p.nomor_nota || `#${p.id.split("-")[0]}`}
                         </div>
                       </td>
-
-                      {/* Supplier & Staff */}
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-800">{p.supplier.nama}</div>
                         <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
@@ -171,28 +227,20 @@ export default function AdminHistoryClient({ initialPurchases }: { initialPurcha
                           <span>Staff: {p.staff.nama}</span>
                         </div>
                       </td>
-
-                      {/* Items & Weight */}
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-800">{totalBerat.toFixed(1)} KG</div>
+                        <div className="font-semibold text-slate-800 whitespace-nowrap">{totalBerat.toFixed(1)} KG</div>
                         <div className="text-xs text-slate-400 mt-0.5">
                           {p.items.length} jenis item ({p.items.map(i => i.sku_name).slice(0, 2).join(", ")}{p.items.length > 2 ? "..." : ""})
                         </div>
                       </td>
-
-                      {/* Total Nilai */}
-                      <td className="px-6 py-4 font-mono font-bold text-slate-800">
+                      <td className="px-6 py-4 font-mono font-bold text-slate-800 whitespace-nowrap">
                         {formatRp(totalNilai)}
                       </td>
-
-                      {/* Status */}
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border inline-block ${s.cls}`}>
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border inline-block whitespace-nowrap ${s.cls}`}>
                           {s.label}
                         </span>
                       </td>
-
-                      {/* Action */}
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2 flex-wrap">
                           {p.status_approval === "menunggu_double_cek" ? (
