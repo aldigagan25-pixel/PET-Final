@@ -8,6 +8,7 @@ import TopLapakAnalytics from "@/components/features/TopLapakAnalytics"
 import SusutLebihAnalytics from "@/components/features/SusutLebihAnalytics"
 import ExpenseAnalytics from "@/components/features/ExpenseAnalytics"
 import DpSummaryAnalytics from "@/components/features/DpSummaryAnalytics"
+import LapakContributionAnalytics from "@/components/features/LapakContributionAnalytics"
 import { redirect } from "next/navigation"
 import PendingTerminAlerts from "@/components/features/PendingTerminAlerts"
 import MonthYearFilter from "@/components/features/MonthYearFilter"
@@ -427,6 +428,104 @@ export default async function ManagerDashboard({
 
   const dpSummaryData = Object.values(dpSummaryMap).sort((a, b) => b.sisaDp - a.sisaDp)
 
+  // ──────────────────────────────────────────
+  // 12. Analisis Kontribusi Lapak (Current vs Previous Month)
+  // ──────────────────────────────────────────
+  const prevMonthStart = new Date(Date.UTC(selectedTahun, selectedBulan - 2, 1, 0, 0, 0) - 7 * 60 * 60 * 1000)
+  const prevMonthlyPurchases = validPurchases.filter(p => p.createdAt >= prevMonthStart && p.createdAt < monthStart)
+
+  const supplierContributionMap: Record<string, {
+    supplierId: string
+    nama: string
+    warehouseId: string
+    warehouseName: string
+    totalKg: number
+    totalNilai: number
+    transaksi: number
+    prevTotalKg: number
+  }> = {}
+
+  // Current month
+  for (const p of monthlyPurchases) {
+    const sid = p.supplierId
+    const nama = p.supplier?.nama || "Unknown"
+    const wId = p.warehouseId
+    const wName = p.warehouse?.nama || "—"
+    
+    if (!supplierContributionMap[sid]) {
+      supplierContributionMap[sid] = {
+        supplierId: sid,
+        nama,
+        warehouseId: wId,
+        warehouseName: wName,
+        totalKg: 0,
+        totalNilai: 0,
+        transaksi: 0,
+        prevTotalKg: 0,
+      }
+    }
+    const entry = supplierContributionMap[sid]
+    entry.transaksi += 1
+    const kg = p.items.reduce((s, i) => s + (i.berat_final_item || 0), 0)
+    const val = p.items.reduce((s, i) => s + (i.subtotal || 0), 0)
+    entry.totalKg += kg
+    entry.totalNilai += val
+  }
+
+  // Previous month
+  for (const p of prevMonthlyPurchases) {
+    const sid = p.supplierId
+    const nama = p.supplier?.nama || "Unknown"
+    const wId = p.warehouseId
+    const wName = p.warehouse?.nama || "—"
+    
+    if (!supplierContributionMap[sid]) {
+      supplierContributionMap[sid] = {
+        supplierId: sid,
+        nama,
+        warehouseId: wId,
+        warehouseName: wName,
+        totalKg: 0,
+        totalNilai: 0,
+        transaksi: 0,
+        prevTotalKg: 0,
+      }
+    }
+    const entry = supplierContributionMap[sid]
+    const kg = p.items.reduce((s, i) => s + (i.berat_final_item || 0), 0)
+    entry.prevTotalKg += kg
+  }
+
+  const contributionList = Object.values(supplierContributionMap)
+  const totalVolumeAll = contributionList.reduce((s, r) => s + r.totalKg, 0)
+  const totalValueAll = contributionList.reduce((s, r) => s + r.totalNilai, 0)
+
+  const lapakContributionData = contributionList.map(s => {
+    const trendKgDelta = s.totalKg - s.prevTotalKg
+    let trendKgPct = 0
+    let status: "UP" | "DOWN" | "FLAT" | "NEW" = "FLAT"
+
+    if (s.prevTotalKg === 0 && s.totalKg > 0) {
+      status = "NEW"
+    } else if (s.prevTotalKg > 0) {
+      trendKgPct = (trendKgDelta / s.prevTotalKg) * 100
+      if (trendKgPct > 5) status = "UP"
+      else if (trendKgPct < -5) status = "DOWN"
+    } else if (s.prevTotalKg > 0 && s.totalKg === 0) {
+      status = "DOWN"
+      trendKgPct = -100
+    }
+
+    return {
+      ...s,
+      pctKg: totalVolumeAll > 0 ? (s.totalKg / totalVolumeAll) * 100 : 0,
+      pctNilai: totalValueAll > 0 ? (s.totalNilai / totalValueAll) * 100 : 0,
+      trendKgDelta,
+      trendKgPct,
+      status
+    }
+  }).sort((a, b) => b.totalKg - a.totalKg)
+
   const ambilKirimPerWarehouse = warehouses.map(w => {
     const wPurchases = monthlyPurchases.filter(p => p.warehouseId === w.id)
     
@@ -727,6 +826,14 @@ export default async function ManagerDashboard({
       {/* Rekap Saldo DP & Kasbon per Lapak */}
       <DpSummaryAnalytics
         dpData={dpSummaryData}
+        warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
+      />
+
+      {/* Analisis Kontribusi Lapak */}
+      <LapakContributionAnalytics
+        contributionData={lapakContributionData}
+        selectedBulan={selectedBulan}
+        selectedTahun={selectedTahun}
         warehouseNames={warehouses.map(w => ({ id: w.id, nama: w.nama }))}
       />
 
